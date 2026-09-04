@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "EB Garamond", Georgia, Cambria, "Times New Roman", serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+:root {
+  --bg-beige: #F9F8F3;
+  --brand-teal: #3D7068;
+  --brand-dark: #1A1F24;
+  --text-gray: #4A4A4A;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-beige);
+  color: var(--brand-dark);
+}
+
+h1, h2, h3, .serif, .font-serif-title {
+  font-family: var(--font-serif);
+}
+
+.mono, .font-mono-code {
+  font-family: var(--font-mono);
+}
+
+.btn-primary {
+  background-color: var(--brand-teal);
+  color: white;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-primary:hover {
+  background-color: #2D544E;
+  transform: translateY(-1px);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+}
+
