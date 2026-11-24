@@ -13,7 +13,6 @@ logs/
 *.log
 .claude-replay.*
 .tmp-*
-.figma/
 
 # Python
 __pycache__/

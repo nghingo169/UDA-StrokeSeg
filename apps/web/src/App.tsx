@@ -73,6 +73,7 @@ type StrokeCase = {
   status: CaseStatus;
   workflow: CaseWorkflow;
   volume: number;
+  confidence: number;
   side: string;
   territory: string;
   nihss: number;
@@ -293,6 +294,7 @@ const cases: StrokeCase[] = [
     status: "Critical",
     workflow: "Awaiting review",
     volume: 18.6,
+    confidence: 0.91,
     side: "Left hemisphere",
     territory: "MCA",
     nihss: 14,
@@ -313,6 +315,7 @@ const cases: StrokeCase[] = [
     status: "Critical",
     workflow: "Draft saved",
     volume: 7.2,
+    confidence: 0.84,
     side: "Right hemisphere",
     territory: "PCA",
     nihss: 9,
@@ -333,6 +336,7 @@ const cases: StrokeCase[] = [
     status: "Priority",
     workflow: "Awaiting review",
     volume: 3.8,
+    confidence: 0.72,
     side: "Left hemisphere",
     territory: "ACA",
     nihss: 6,
@@ -353,6 +357,7 @@ const cases: StrokeCase[] = [
     status: "Routine",
     workflow: "Received",
     volume: 0,
+    confidence: 0.41,
     side: "Undetermined",
     territory: "-",
     nihss: 4,

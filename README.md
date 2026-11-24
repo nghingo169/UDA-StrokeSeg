@@ -199,5 +199,4 @@ Details: [`apps/server/README.md`](apps/server/README.md)
 ## Notes
 
 - Prototype UI still centered in `apps/web/src/App.tsx` (feature stubs under `features/*`).
-- Figma Make tooling stays under `.figma/`; `apps/web/vite.config.ts` imports `../../.figma/make/site.json`.
 - Specs / ERD / sitemap / UIUX plans: `notes/`.
