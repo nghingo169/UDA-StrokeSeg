@@ -1,0 +1,3 @@
+# Optional DVC pipeline for AI weights (research / large artifacts).
+# Prefer MinIO/S3 Model Registry fetch via apps/ai_pipeline/scripts/fetch_weights.py in prod.
+# stages: {}

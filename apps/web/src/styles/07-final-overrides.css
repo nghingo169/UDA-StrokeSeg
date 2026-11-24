@@ -1,0 +1,388 @@
+﻿/* Cross-role layout guardrails: keep dense clinical screens readable without overlap. */
+.sketch-app { overflow-x: hidden; }
+.sketch-app .page, .sketch-app .panel, .sketch-app .metric-card, .sketch-app .page-intro,
+.sketch-app .workspace, .sketch-app section, .sketch-app article { min-width: 0; box-sizing: border-box; }
+.sketch-app .page-intro { align-items: flex-start; flex-wrap: wrap; }
+.sketch-app .page-intro > div:first-child { min-width: 0; flex: 1 1 320px; }
+.sketch-app .intro-actions { flex: 0 1 auto; flex-wrap: wrap; }
+.sketch-app .panel-head { flex-wrap: wrap; }
+.sketch-app .panel-head > * { min-width: 0; }
+.sketch-app .metric-grid { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.sketch-app .panel-body { min-width: 0; overflow-x: auto; }
+.sketch-app table { max-width: 100%; }
+.sketch-app input, .sketch-app select, .sketch-app textarea { max-width: 100%; box-sizing: border-box; }
+.sketch-app .sketch-tools { flex-wrap: wrap; }
+.sketch-app .sketch-filters { flex-wrap: wrap; min-width: 0; }
+@media (max-width: 900px) {
+  .sketch-app .page { padding: 18px 16px 28px; }
+  .sketch-app .page-intro h1 { font-size: 22px; }
+  .sketch-app .app-main { margin-left: 0; }
+  .sketch-app .sidebar { transform: translateX(-100%); }
+  .sketch-app .sidebar.open { transform: translateX(0); }
+  .sketch-app .topbar { display: flex; }
+  .sketch-app .menu-button { display: grid; }
+}
+@media (max-width: 620px) {
+  .sketch-app .page-intro { gap: 12px; margin-bottom: 18px; }
+  .sketch-app .intro-actions { width: 100%; }
+  .sketch-app .intro-actions > * { flex: 1 1 auto; }
+  .sketch-app .metric-grid, .sketch-app .metric-grid.four { grid-template-columns: 1fr; }
+  .sketch-app .panel-head, .sketch-app .panel-head.compact { padding: 14px; }
+  .sketch-app .panel-body { padding: 14px; }
+  .sketch-app .sketch-search { flex: 1 1 180px; width: auto; }
+}
+
+/* Final system-wide UI normalization. Keep this layer last so legacy page rules
+   cannot reintroduce font, spacing, border and overflow mismatches. */
+.app-shell *, .auth-page * { box-sizing: border-box; }
+.app-shell { overflow-x: hidden; }
+.app-shell h1, .app-shell h2, .app-shell h3, .app-shell h4,
+.app-shell p, .app-shell ul, .app-shell ol, .app-shell dl { overflow-wrap: anywhere; }
+.app-shell h1, .app-shell h2, .app-shell h3, .app-shell h4 { line-height: 1.2; }
+.app-shell p { line-height: 1.5; }
+.app-shell button, .app-shell input, .app-shell select, .app-shell textarea { line-height: 1.35; }
+.app-shell button:focus-visible, .app-shell a:focus-visible, .app-shell input:focus-visible,
+.app-shell select:focus-visible, .app-shell textarea:focus-visible { outline: 3px solid #5f8cf2; outline-offset: 2px; }
+.page > *, .workspace > *, .workspace-top > *, .workspace-actions > *, .intro-actions > * { min-width: 0; }
+.panel, .metric-card, .clinical-panel, .workspace, .empty-state { overflow: hidden; }
+.panel-body, .table-scroll, .worklist-scroll { max-width: 100%; overflow-x: auto; }
+.panel-head h2, .panel-head h3, .section-title, .workspace-identity, .case-identity { min-width: 0; }
+.panel-head h2, .panel-head h3, .section-title > span, .workspace-identity > strong { overflow-wrap: anywhere; }
+.panel-head, .workspace-top, .workspace-actions, .table-tools, .intro-actions { row-gap: 10px; }
+.metric-grid { align-items: stretch; }
+.metric-card { height: 100%; }
+.metric-card strong { line-height: 1.05; }
+.table-tools, .filter-tabs, .chip-group { max-width: 100%; flex-wrap: wrap; }
+table { border-collapse: collapse; }
+th, td { overflow-wrap: anywhere; }
+.modal-wrap, .session-lock { padding: 20px; overflow-y: auto; }
+.modal, .session-lock-card { max-width: min(560px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; }
+.form-label { min-width: 0; }
+.form-label input, .form-label select, .form-label textarea { width: 100%; min-width: 0; }
+.viewer-layout { min-width: 0; }
+.clinical-panel { min-width: 0; }
+@media (max-width: 1100px) {
+  .page { padding-inline: clamp(16px, 3vw, 28px); }
+  .viewer-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(420px, 1fr) auto; }
+  .clinical-panel { max-height: none; width: auto; }
+  .workspace-top { align-items: flex-start; flex-wrap: wrap; }
+  .workspace-actions { margin-left: 0; flex-wrap: wrap; }
+}
+@media (max-width: 700px) {
+  .page { padding: 16px 14px 28px; }
+  .topbar { padding-inline: 14px; gap: 10px; }
+  .topbar-title { min-width: 0; flex: 1; }
+  .topbar-title span { display: none; }
+  .topbar-title strong { font-size: 14px; }
+  .service-pill, .role-control { display: none; }
+  .panel-head, .panel-head.compact { padding: 14px; }
+  .panel-body { padding: 14px; }
+  .workspace-actions > *, .intro-actions > * { flex: 1 1 140px; }
+  .viewer-layout { grid-template-rows: minmax(300px, 52vh) auto; }
+  .clinical-panel { padding: 12px; }
+  .table-scroll, .worklist-scroll { margin-inline: -2px; }
+  .data-table, .worklist-table { min-width: 680px; }
+}
+.password-toggle {
+  position: absolute;
+  right: 4px;
+  top: 12px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #526475;
+  cursor: pointer;
+}
+.field-help { display: block; margin-top: 6px; color: #526475; font-size: 12px; font-weight: 400; }
+.field-error { display: block; margin-top: 4px; color: #b53f3f; font-size: 12px; font-weight: 700; }
+.sign-actions { display: flex; gap: 8px; }
+.sign-actions .secondary-button,
+.sign-actions .primary-button { flex: 1; min-height: 44px; }
+.sketch-studio .studio-sign,
+.sketch-studio .studio-decision { display: grid; gap: 12px; }
+.sketch-studio .studio-sign .section-title,
+.sketch-studio .studio-decision .section-title { margin-bottom: 0; }
+.sketch-studio .volume-result strong {
+  display: flex;
+  align-items: baseline;
+  width: fit-content;
+}
+.sketch-studio .volume-result small {
+  font-size: 16px;
+  font-weight: 700;
+  margin-left: 4px;
+  line-height: 1;
+  color: #1d2f40;
+}
+.sketch-studio .quality-flat {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid #edf2f4;
+}
+.sketch-studio .quality-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.sketch-studio .quality-row > span {
+  flex: 1 0 100%;
+  color: #526475;
+  font-size: 12px;
+  font-weight: 700;
+}
+.sketch-studio .quality-row > button,
+.sketch-studio .utility-scale-options button {
+  min-height: 48px;
+  padding: 4px 8px;
+  border: 1px solid #d8e0e7;
+  border-radius: 8px;
+  background: #fff;
+  color: #33485c;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.sketch-studio .quality-row > button.active,
+.sketch-studio .utility-scale-options button.active {
+  color: #175f78;
+  border-color: #8ebbc7;
+  background: #eaf5f6;
+}
+.sketch-studio .quality-row.utility-scale { display: grid; gap: 8px; }
+.sketch-studio .utility-scale-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+}
+.sketch-studio .utility-scale-options button {
+  width: 100%;
+  flex-direction: row;
+  font-size: 12px;
+  padding: 4px;
+}
+.sketch-studio .disposition-options { display: grid; gap: 6px; }
+.sketch-studio .clinical-composer > textarea { min-height: 72px; }
+
+.sketch-studio .clinical-panel .section-title > span {
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+.sketch-studio .clinical-panel .section-title b {
+  padding: 2px 8px;
+  color: var(--ink);
+  background: #e8eef4;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.sketch-studio .clinical-panel .section-title em {
+  font-size: 14px;
+  font-weight: 600;
+}
+.sketch-studio .summary-split {
+  margin: 14px 0 4px;
+  border: 0;
+  border-top: 1px solid var(--line-soft);
+}
+.sketch-studio .clinical-panel .patient-summary dt,
+.sketch-studio .clinical-panel .volume-result > span,
+.sketch-studio .clinical-panel .measurement-grid span,
+.sketch-studio .clinical-panel .confidence-row > span,
+.sketch-studio .clinical-panel .confidence-meta,
+.sketch-studio .clinical-panel .quality-row > span,
+.sketch-studio .clinical-panel .form-label,
+.sketch-studio .clinical-panel .confirm-check,
+.sketch-studio .clinical-panel .sign-requirements,
+.sketch-studio .clinical-panel .composer-heading label {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.sketch-studio .clinical-panel .patient-summary dd,
+.sketch-studio .clinical-panel .measurement-grid strong,
+.sketch-studio .clinical-panel .confidence-row strong {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.sketch-studio .clinical-panel .patient-summary dl div {
+  font-size: 14px;
+  align-items: baseline;
+  gap: 12px;
+}
+.sketch-studio .clinical-panel .volume-result strong,
+.sketch-studio .clinical-panel .volume-result small {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.sketch-studio .clinical-panel .ai-suggestion li,
+.sketch-studio .clinical-panel .collapse-panel,
+.sketch-studio .clinical-panel .collapse-trigger,
+.sketch-studio .clinical-panel .disposition-options button {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.sketch-studio .clinical-panel .collapse-trigger {
+  font-weight: 600;
+  color: var(--ink);
+}
+.sketch-studio .clinical-panel .clinical-composer > textarea,
+.sketch-studio .clinical-panel .clinical-composer textarea {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.sketch-studio .note-title {
+  align-items: flex-start;
+  gap: 8px 12px;
+}
+.sketch-studio .note-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 12px;
+}
+.sketch-studio .note-text-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #176b87;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sketch-studio .composer-toolbar-minimal {
+  justify-content: space-between;
+}
+.sketch-studio .composer-toolbar-minimal .composer-save-status {
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.sketch-studio .composer-toolbar-minimal .composer-save-status.saved {
+  color: #176b87;
+}
+.sketch-studio .signoff-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 16px;
+  padding: 20px 24px;
+  background: #f4f6f8;
+}
+.sketch-studio .clinical-section,
+.sketch-studio .signoff-side {
+  background: #fff;
+  border: 1px solid #dbe4e9;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.sketch-physician { grid-template-columns: 340px minmax(0, 1fr); }
+.sketch-physician .panel,
+.sketch-rooms .panel,
+.sketch-app .hod-kpis .metric-card,
+.sketch-app .hod-split .panel {
+  border: 1px solid #dbe4e9;
+  border-radius: 10px;
+  box-shadow: none;
+  background: #fff;
+}
+.sketch-physician .search-field,
+.sketch-physician .signed-check,
+.sketch-physician .panel-head .icon-button { display: none; }
+.sketch-physician .signed-list button { grid-template-columns: 1fr auto; }
+.sketch-app .hod-kpis .metric-icon,
+.sketch-app .hod-kpis small { display: none; }
+.sketch-app .hod-kpis .metric-card strong { font-size: 24px; font-weight: 800; line-height: 1.1; }
+.sketch-rooms .consultation-lobby-grid { grid-template-columns: minmax(0, 1fr) 360px; }
+.sketch-rooms .consultation-lobby-grid > .panel:first-child { order: 2; }
+.sketch-rooms .consultation-lobby-grid > .panel:nth-child(2) { order: 1; }
+
+.sketch-live {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+  background: #0b1520;
+  color: #d9e2ed;
+}
+html.sketch-immersive:has(.sketch-live),
+html.sketch-immersive:has(.sketch-live) body {
+  height: 100% !important;
+  overflow: hidden !important;
+  position: static !important;
+}
+.sketch-live .room-status-bar {
+  flex: none;
+  margin: 0;
+  border-radius: 0;
+  background: #101c29;
+  color: #d9e2ed;
+}
+.sketch-live .room-status-bar span,
+.sketch-live .room-status-bar button {
+  color: #d9e2ed;
+}
+.sketch-live .room-status-bar .secondary-button {
+  background: transparent;
+  border-color: #3d5166;
+  color: #d9e2ed;
+}
+.sketch-live .consultation-layout {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-rows: minmax(0, 1fr);
+}
+.sketch-live .consultation-main-column,
+.sketch-live .consultation-canvas,
+.sketch-live .clinical-panel {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.sketch-live .consultation-canvas .scan-grid {
+  flex: 1;
+  min-height: 0;
+}
+.sketch-live .clinical-panel {
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  background: #0b1520;
+  border-left-color: #243343;
+}
+.sketch-live .clinical-panel .zoom-video-strip {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin: 0;
+  padding: 10px;
+  background: #0b1520;
+}
+.sketch-live .clinical-section { background: #fff; color: #1d2f40; border-radius: 10px; margin: 10px; }

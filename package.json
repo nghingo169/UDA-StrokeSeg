@@ -1,0 +1,22 @@
+{
+  "name": "uda-strokeseg",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/web",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @uda-strokeseg/web",
+    "dev:api": "cd apps/server && python -m uvicorn app.main:app --reload --port 8000",
+    "build": "npm run build -w @uda-strokeseg/web",
+    "preview": "npm run preview -w @uda-strokeseg/web",
+    "format": "npm run format -w @uda-strokeseg/web",
+    "typecheck": "npm run typecheck -w @uda-strokeseg/web",
+    "gen:types": "echo TODO: openapi-typescript from apps/server /openapi.json into packages/common-types"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

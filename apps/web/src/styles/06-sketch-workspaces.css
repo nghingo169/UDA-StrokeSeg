@@ -1,0 +1,575 @@
+﻿/* Sketch shell + radiologist worklist (notes/UDA-StrokeSeg - UI sketch.html) */
+.sketch-app { background: #f4f6f8; color: #1d2f40; }
+.sketch-app .topbar,
+.sketch-app .sidebar .brand-mark,
+.sketch-app .sidebar .brand small,
+.sketch-app .sidebar .workspace-label,
+.sketch-app .side-nav svg,
+.sketch-app .sidebar-user-wrap { display: none; }
+.sketch-app .app-main { background: #f4f6f8; }
+.sketch-app .sidebar {
+  width: var(--sidebar-w);
+  padding: 18px 12px;
+  gap: 4px;
+  background: #0d2036;
+  border-right: 0;
+}
+.sketch-app .sidebar .brand {
+  height: auto;
+  padding: 0 10px 14px;
+  border: 0;
+}
+.sketch-app .sidebar .brand strong,
+.sketch-app .sidebar .brand strong span {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.sketch-app .side-nav { gap: 4px; }
+.sketch-app .side-nav button {
+  min-height: 44px;
+  padding: 10px 12px;
+  gap: 8px;
+  border-radius: 6px;
+  color: #d9e2ed;
+  background: transparent;
+  box-shadow: none;
+  font-size: 14px;
+  font-weight: 400;
+}
+.sketch-app .side-nav button:hover { color: #fff; background: transparent; }
+.sketch-app .side-nav button.active {
+  color: #fff;
+  background: #2c66bc59;
+  box-shadow: none;
+}
+.sketch-identity {
+  margin-top: auto;
+  padding: 12px 12px 0;
+  display: grid;
+  gap: 4px;
+  color: #d9e2ed;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.sketch-identity strong { color: #fff; font-size: 14px; }
+.sketch-app .safety-note {
+  display: block;
+  margin-top: 10px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #b4c2d1;
+  font-size: 12px;
+}
+.sketch-app .sketch-signout {
+  margin: 8px 12px 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #b4c2d1;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.sketch-app .page {
+  max-width: none;
+  padding: 16px 20px 20px;
+}
+.sketch-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.sketch-top-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
+.cds-badge {
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #eef4f8;
+  color: #176b87;
+  font-size: 12px;
+  font-weight: 700;
+}
+.engine-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #eef8f1;
+  color: #1f8a4c;
+  font-size: 12px;
+  font-weight: 700;
+}
+.engine-pill i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1f8a4c;
+}
+.sla-strip {
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #c5dde3;
+  border-radius: 8px;
+  background: #f7fbfb;
+  color: #234352;
+  font-size: 14px;
+}
+.sla-strip.warning { background: #fff6e8; border-color: #ead7b8; color: #7a4f12; }
+.sla-strip.critical { background: #fff1f1; border-color: #f0d4d4; color: #b53f3f; }
+.sla-strip span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sla-strip button {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.sketch-top h1 { margin: 0; font-size: 24px; font-weight: 700; color: #1d2f40; }
+.sketch-muted, .sketch-top .sketch-muted { color: #526475; font-size: 14px; }
+.sketch-worklist {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 16px;
+  align-items: start;
+  margin-top: 16px;
+}
+.sketch-worklist .worklist-panel {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid #dbe4e9;
+  border-radius: 10px;
+  box-shadow: none;
+}
+.sketch-tools { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: nowrap; }
+.sketch-filters { display: flex; align-items: center; gap: 8px; flex: 0 1 auto; flex-wrap: nowrap; }
+.sketch-sort { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; color: #526475; font-size: 14px; }
+.sketch-sort select {
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid #dbe4e9;
+  border-radius: 8px;
+  background: #fff;
+  color: #1d2f40;
+  font: inherit;
+}
+.sketch-search {
+  flex: 0 0 220px;
+  width: 220px;
+  max-width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border: 1px solid #dbe4e9;
+  border-radius: 8px;
+  background: #fff;
+  color: #1d2f40;
+  font: inherit;
+}
+.sketch-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sketch-chip.all { background: #eef4f8; color: #176b87; }
+.sketch-chip.crit { background: #fff1f1; color: #b53f3f; }
+.sketch-chip.pri { background: #fff6e8; color: #8a5a1b; }
+.sketch-chip.routine { background: #eef4f8; color: #176b87; }
+.sketch-chip.on { outline: 2px solid currentColor; outline-offset: 1px; }
+.sketch-tools .sketch-chip {
+  min-height: 34px;
+  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+}
+.sketch-worklist .worklist-scroll { overflow-x: hidden; }
+.sketch-worklist .worklist-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: auto;
+}
+.sketch-worklist .worklist-panel .worklist-table th,
+.sketch-worklist .worklist-panel .worklist-table td {
+  display: table-cell;
+  text-align: left;
+}
+.sketch-worklist .worklist-panel .worklist-table th.num,
+.sketch-worklist .worklist-panel .worklist-table td.num,
+.sketch-worklist .worklist-panel .worklist-table th.nowrap,
+.sketch-worklist .worklist-panel .worklist-table td.nowrap,
+.sketch-worklist .priority,
+.sketch-worklist .workflow-chip {
+  white-space: nowrap;
+}
+.sketch-worklist .worklist-panel .worklist-table th.num,
+.sketch-worklist .worklist-panel .worklist-table td.num {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.sketch-worklist .worklist-table th,
+.sketch-worklist .worklist-table td {
+  padding: 9px 8px;
+  border-bottom: 1px solid #edf2f4;
+  background: transparent;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 14px;
+  font-weight: 400;
+  vertical-align: middle;
+}
+.sketch-worklist .worklist-panel .worklist-table th.thumb,
+.sketch-worklist .worklist-panel .worklist-table td.thumb {
+  width: 56px;
+  padding: 9px 6px;
+}
+.sketch-worklist .worklist-panel .worklist-table th.territory,
+.sketch-worklist .worklist-panel .worklist-table td.territory {
+  padding-left: 16px;
+}
+.sketch-worklist td.study { min-width: 155px; }
+.sketch-worklist td.study strong,
+.sketch-worklist td.study .study-meta {
+  white-space: nowrap;
+}
+.sketch-worklist td.study .study-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sketch-worklist .worklist-table th { color: #526475; font-size: 12px; font-weight: 400; }
+.sketch-worklist tbody tr { cursor: pointer; }
+.sketch-worklist tbody tr:not(.processing-row) td { height: 76px; }
+.sketch-worklist tbody tr.tone-critical td,
+.sketch-worklist tbody tr.tone-critical.is-preview td { background: #fff5f5; }
+.sketch-worklist tbody tr.is-preview td:first-child { box-shadow: inset 3px 0 #176b87; }
+.sketch-worklist .priority {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.sketch-worklist .priority i { display: none; }
+.sketch-worklist .priority.critical { background: #fff1f1; color: #b53f3f; }
+.sketch-worklist .priority.warning { background: #fff6e8; color: #8a5a1b; }
+.sketch-worklist .priority.normal { background: #eef4f8; color: #176b87; }
+.sketch-worklist small { color: #526475; font-size: 14px; }
+.workflow-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #eef4f8;
+  color: #176b87;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.workflow-chip.draft { background: #fff6e8; color: #8a5a1b; }
+.workflow-chip.received { background: #f4f6f8; color: #526475; }
+.processing-row td {
+  display: table-cell !important;
+  background: #f7fbfb;
+  color: #176b87;
+  font-size: 14px;
+}
+.processing-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12px;
+  min-width: 0;
+}
+.processing-line > span:nth-child(2) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.processing-spin {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 2px solid #d3e2ea;
+  border-top-color: #176b87;
+  border-radius: 50%;
+  animation: sla-spin 0.8s linear infinite;
+}
+@keyframes sla-spin { to { transform: rotate(360deg); } }
+.sketch-bar.thin { flex: 0 0 120px; height: 6px; margin: 0; }
+.sketch-bar.thin i { height: 6px; }
+.sketch-thumb {
+  position: relative;
+  display: block;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #0b1520;
+}
+.sketch-thumb i {
+  position: absolute;
+  left: 13px;
+  top: 14px;
+  width: 18px;
+  height: 16px;
+  border-radius: 50%;
+  background: #f6f3d2;
+  border: 2px solid #ff6a5c;
+}
+.sketch-worklist .sla-hot { color: #b53f3f; }
+.sketch-worklist .sla-warn { color: #8a5a1b; }
+.sketch-progress-label { margin: 12px 0 0; color: #526475; font-size: 14px; }
+.sketch-bar { height: 8px; margin-top: 6px; border-radius: 4px; background: #d3e2ea; }
+.sketch-bar i { display: block; width: 60%; height: 8px; border-radius: 4px; background: #176b87; }
+.sketch-preview {
+  margin: 0;
+  padding: 14px;
+  display: grid;
+  gap: 0;
+  border: 1px solid #dbe4e9;
+  border-radius: 10px;
+  box-shadow: none;
+}
+.sketch-preview h2 { margin: 12px 0; font-size: 16px; font-weight: 700; }
+.preview-sequences { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.preview-sequences div {
+  position: relative;
+  height: 96px;
+  border-radius: 8px;
+  background: #0b1520;
+  color: #c9d3db;
+}
+.preview-sequences span { position: absolute; left: 6px; top: 4px; font-size: 12px; }
+.preview-sequences .has-lesion::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 42px;
+  width: 22px;
+  height: 18px;
+  margin-left: -11px;
+  border-radius: 50%;
+  background: #f6f3d2;
+  border: 2px solid #ff6a5c;
+}
+.preview-facts { display: grid; gap: 8px; margin: 0; }
+.preview-facts div { display: grid; gap: 2px; }
+.preview-facts dt { color: #526475; font-size: 12px; }
+.preview-facts dd { margin: 0; font-size: 14px; font-weight: 600; }
+.preview-facts dd.good { color: #1f8a4c; }
+.preview-facts dd.warn { color: #8a5a1b; }
+.preview-facts dd.bad { color: #b53f3f; }
+.sketch-preview-scan {
+  position: relative;
+  height: 148px;
+  border-radius: 8px;
+  background: #0b1520;
+  color: #c9d3db;
+}
+.sketch-preview-scan span { position: absolute; left: 8px; top: 8px; font-size: 12px; font-style: normal; }
+.sketch-preview-scan::after {
+  content: "";
+  position: absolute;
+  left: calc(50% - 23px);
+  top: 52px;
+  width: 46px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f6f3d2;
+  border: 2px solid #ff6a5c;
+}
+.sketch-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+  margin-top: 4px;
+}
+.sketch-metrics span,
+.preview-facts span { display: block; color: #526475; font-size: 12px; }
+.sketch-metrics strong,
+.preview-facts strong { display: block; margin-top: 2px; font-size: 14px; }
+.preview-facts { display: grid; gap: 12px; margin-top: 16px; }
+.sketch-k { font-size: 24px; font-weight: 800; line-height: 1.1; }
+.sketch-btn {
+  background: #176b87;
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sketch-btn.outline { background: #fff; color: #176b87; border: 1px solid #176b87; }
+.sketch-btn.block { width: 100%; margin-top: 0; min-height: 44px; }
+.preview-action {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #edf2f4;
+}
+.sketch-btn.fill-blue { background: #2c66bc; color: #fff; border: 0; }
+.sketch-btn.danger { background: #fff; color: #b53f3f; border: 1px solid #b53f3f; }
+@media (max-width: 1180px) {
+  .sketch-worklist { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .sketch-app .sidebar { transform: none; }
+  .sketch-app .app-main { margin-left: var(--sidebar-w); }
+  .sketch-app .sidebar-scrim { display: none; }
+}
+
+html.sketch-immersive .sketch-app .sidebar,
+html.sketch-immersive .sketch-app .sidebar-scrim { display: none; }
+html.sketch-immersive,
+html.sketch-immersive body { height: 100%; overflow: hidden; }
+html.sketch-immersive .sketch-app { height: 100vh; overflow: hidden; }
+html.sketch-immersive .sketch-app .app-main {
+  margin-left: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+html.sketch-immersive .sketch-app .page {
+  width: 100%;
+  margin: 0;
+  align-self: stretch;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+html.sketch-immersive .workspace { margin: 0; }
+.sketch-studio {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sketch-studio-bar,
+.sketch-live-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 20px;
+  background: #0d2036;
+  color: #fff;
+  flex-wrap: wrap;
+}
+.sketch-studio-bar > span,
+.sketch-live-bar > span:not(.sketch-chip) { color: #b4c2d1; font-size: 14px; }
+.studio-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.studio-meta span {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #1c3348;
+  color: #d9e2ed;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.studio-bar-actions { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+.sketch-studio-modes,
+.sketch-live-actions { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+.sketch-studio .viewer-layout {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) 390px;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  background: #07111d;
+}
+.sketch-warn {
+  grid-column: 1 / -1;
+  margin: 0;
+  background: #fff6e8;
+  color: #7a4f12;
+  padding: 8px 16px;
+  font-size: 14px;
+}
+.sketch-tools-rail {
+  width: 84px;
+  flex: none;
+  background: #0d2036;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sketch-tools-rail button {
+  width: 60px;
+  height: 48px;
+  border-radius: 8px;
+  border: 1px solid #33475c;
+  background: transparent;
+  color: #d9e2ed;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.sketch-tools-rail button.on { background: #2c66bc; border-color: #2c66bc; color: #fff; }
+.sketch-studio .viewer { min-width: 0; min-height: 0; background: #07111d; }
+.sketch-studio .clinical-panel {
+  flex: 0 0 390px;
+  width: 390px;
+  max-width: 390px;
+  box-sizing: border-box;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg);
+}
+.sketch-tools-rail .rail-history {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sketch-tools-rail .rail-history button {
+  height: auto;
+  min-height: 44px;
+  padding: 4px;
+  white-space: normal;
+  line-height: 1.15;
+}
+.sketch-tools-rail .rail-history button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.overlay-opacity {
+  gap: 6px;
+  color: #d9e2ed;
+  font-size: 12px;
+}
+.overlay-opacity input { width: 72px; }
+.password-input { position: relative; display: block; }
+.password-input input { padding-right: 36px; }
+

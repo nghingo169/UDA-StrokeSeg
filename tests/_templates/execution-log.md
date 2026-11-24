@@ -1,0 +1,16 @@
+# Test Execution Run Report
+
+* **Mã đợt:** TR-YYYYMMDD-\<TAG\>
+* **Phiên bản:** UDA-StrokeSeg vX.Y.Z
+* **Người thực hiện:** …
+* **Ngày:** YYYY-MM-DD
+* **Môi trường:** localhost / staging / …
+
+| Mã Test Case | Phân hệ | Kết quả | Thời gian | Ghi chú |
+| :--- | :--- | :---: | :---: | :--- |
+| **TC-…** | … | PASS/FAIL | … | … |
+
+## Tổng kết
+* Pass: …
+* Fail: …
+* Blocked: …

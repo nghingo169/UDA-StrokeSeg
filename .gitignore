@@ -1,0 +1,45 @@
+node_modules/
+yarn.lock
+dist/
+build/
+.cache/
+.env*
+apps/server/.zoom-oauth.json
+.vite/
+vite.config.*.timestamp-*
+*.tsbuildinfo
+*-debug.log*
+logs/
+*.log
+.claude-replay.*
+.tmp-*
+.figma/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
+
+# AI weights cache - never commit binaries (fetch via apps/ai_pipeline/scripts/fetch_weights.py)
+apps/ai_pipeline/weights/**
+!apps/ai_pipeline/weights/.gitkeep
+!apps/ai_pipeline/weights/README.md
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+
+# DVC / local secrets
+.dvc/cache/
+ops/docker/.env
+
+# Platform-managed agentplat state, not project source.
+/.plugins/
+/.opencode-skills/
+.venvcd/ 
