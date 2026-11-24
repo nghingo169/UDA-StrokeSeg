@@ -1,0 +1,6 @@
+{
+  "name": "UDA-StrokeSeg",
+  "description": "Automated Acute Ischemic Stroke Lesion Segmentation on Multi-Center MRI via Unsupervised Domain Adaptation",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
