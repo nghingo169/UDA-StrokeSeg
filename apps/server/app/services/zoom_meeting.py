@@ -15,9 +15,13 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy import text
+
 from app.core.config import settings
+from app.db.session import SessionLocal
 
 _TOKEN_PATH = Path(__file__).resolve().parents[2] / ".zoom-oauth.json"
+_TMP_TOKEN_PATH = Path("/tmp/uda-strokeseg-zoom-oauth.json")
 _oauth_state = ""
 
 
@@ -33,12 +37,53 @@ def sdk_app_secret() -> str:
     return settings.zoom_sdk_secret or settings.zoom_client_secret
 
 
-def _stored_refresh_token() -> str:
+def _load_token_payload() -> dict[str, Any]:
+    if settings.zoom_refresh_token:
+        return {"refresh_token": settings.zoom_refresh_token}
     try:
-        data = json.loads(_TOKEN_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return ""
+        with SessionLocal() as db:
+            stored = db.execute(
+                text("SELECT state FROM app_state WHERE state_key = 'zoom_oauth'")
+            ).scalar_one_or_none()
+        if isinstance(stored, dict):
+            return stored
+        if isinstance(stored, str):
+            parsed = json.loads(stored)
+            return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        # Local development may run before PostgreSQL is available. Fall back
+        # to the file-based adapter in that case.
+        pass
+    for path in (_TMP_TOKEN_PATH, _TOKEN_PATH):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(data, dict):
+            return data
+    return {}
+
+
+def _stored_refresh_token() -> str:
+    data = _load_token_payload()
     return str(data.get("refresh_token") or "")
+
+
+def _persist_token_payload(payload: dict[str, Any]) -> bool:
+    try:
+        with SessionLocal.begin() as db:
+            db.execute(
+                text("""
+                    INSERT INTO app_state(state_key, state, updated_at)
+                    VALUES ('zoom_oauth', CAST(:state AS jsonb), now())
+                    ON CONFLICT (state_key)
+                    DO UPDATE SET state = EXCLUDED.state, updated_at = now()
+                """),
+                {"state": json.dumps(payload)},
+            )
+        return True
+    except Exception:
+        return False
 
 
 def zoom_configured() -> bool:
@@ -88,7 +133,17 @@ def _save_token_payload(data: dict[str, Any]) -> None:
         "access_token": data.get("access_token") or "",
         "expires_at": time.time() + int(data.get("expires_in") or 3600) - 60,
     }
-    _TOKEN_PATH.write_text(json.dumps(payload), encoding="utf-8")
+    if _persist_token_payload(payload):
+        return
+    # Keep local development working, and use /tmp as a best-effort fallback
+    # for a warm serverless instance whose database is temporarily unavailable.
+    for path in (_TMP_TOKEN_PATH, _TOKEN_PATH):
+        try:
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            return
+        except OSError:
+            continue
+    raise ValueError("Zoom token was received but could not be persisted")
 
 
 def _post_token(form: dict[str, str]) -> dict[str, Any]:
@@ -150,10 +205,7 @@ def exchange_code(code: str, state: str) -> None:
 
 
 def _oauth_access_token() -> str | None:
-    try:
-        stored = json.loads(_TOKEN_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
+    stored = _load_token_payload()
     access = str(stored.get("access_token") or "")
     if access and float(stored.get("expires_at") or 0) > time.time():
         return access
