@@ -23,7 +23,7 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
-
+./vscode
 *.data/
 
 # Synthetic PACS study data

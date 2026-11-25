@@ -243,3 +243,101 @@ def test_radiologist_requests_and_physician_opens_critical_only(monkeypatch):
         json={"chairman_user_id": "u-hod-003", "participant_user_ids": ["u-rad-011"]},
     )
     assert still_hod.status_code == 200, still_hod.text
+
+
+def test_assign_resolves_production_uuid_outside_demo_state(monkeypatch):
+    """HoD picks a PostgreSQL UUID from /users; that id is not in the seeded state."""
+    from app.api.deps import CurrentUser, get_current_user
+    from app.api.v1.endpoints import consultations as api
+
+    chairman_id = "00000000-0000-0000-0000-000000000024"
+    requester_id = "00000000-0000-0000-0000-000000000011"
+    unknown_id = "00000000-0000-0000-0000-000000000099"
+    hrm_users = {
+        chairman_id: {
+            "id": chairman_id,
+            "username": "maya.harris",
+            "display_name": "Dr. Maya Harris",
+            "employee_id": "PHY-024",
+            "role": "physician",
+            "initials": "MH",
+        },
+        requester_id: {
+            "id": requester_id,
+            "username": "lena.morgan",
+            "display_name": "Dr. Lena Morgan",
+            "employee_id": "RAD-011",
+            "role": "radiologist",
+            "initials": "LM",
+        },
+    }
+    state = {
+        "users": [
+            {
+                "id": "u-rad-011",
+                "username": "lena.morgan",
+                "display_name": "Dr. Lena Morgan",
+                "employee_id": "RAD-011",
+                "role": "radiologist",
+                "initials": "LA",
+            }
+        ],
+        "Consultation": [
+            {
+                "id": "CON-UUID-001",
+                "study_id": "AIS-1",
+                "status": "PENDING_ASSIGNMENT",
+                "requested_by_id": requester_id,
+                "members": [],
+                "trigger_reason": "UUID assignment",
+                "lifecycle_phase": "initialization",
+                "zoom_mock": True,
+            }
+        ],
+        "notifications": [],
+    }
+    hod = CurrentUser(
+        {
+            "id": "00000000-0000-0000-0000-000000000003",
+            "username": "thomas.nguyen",
+            "display_name": "Dr. Thomas Nguyen",
+            "employee_id": "HOD-003",
+            "role": "hod",
+            "initials": "TN",
+        }
+    )
+
+    monkeypatch.setattr(api.settings, "demo_mode", False)
+    monkeypatch.setattr(api.store, "mutate", lambda fn: fn(state))
+    monkeypatch.setattr(api.store, "audit", lambda *args, **kwargs: None)
+
+    async def _broadcast(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(api.consultation_hub, "broadcast", _broadcast)
+    monkeypatch.setattr("app.services.user_service.get_user", lambda user_id: hrm_users.get(user_id))
+    app.dependency_overrides[get_current_user] = lambda: hod
+    try:
+        missing = client.post(
+            "/api/v1/consultation/CON-UUID-001/assign",
+            headers={"Authorization": "Bearer test"},
+            json={"chairman_user_id": unknown_id, "participant_user_ids": []},
+        )
+        assert missing.status_code == 400, missing.text
+        assert missing.json()["detail"] == "Chairman must be a clinician"
+
+        assigned = client.post(
+            "/api/v1/consultation/CON-UUID-001/assign",
+            headers={"Authorization": "Bearer test"},
+            json={"chairman_user_id": chairman_id, "participant_user_ids": []},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert assigned.status_code == 200, assigned.text
+    panel = assigned.json()
+    assert panel["lead_chair_id"] == chairman_id
+    roles = {item["user_id"]: item["role_in_session"] for item in panel["members"]}
+    assert roles[chairman_id] == "Chair"
+    assert roles[requester_id] == "Member"
+    assert panel["members"][0]["employee_id"] == "PHY-024"

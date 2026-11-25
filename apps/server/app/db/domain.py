@@ -9,40 +9,68 @@ from sqlalchemy import text
 
 from app.db.session import SessionLocal
 
+_USER_COLUMNS = """
+    u.user_id, u.username, u.email, u.full_name, u.department,
+    u.employee_id, u.is_active,
+    COALESCE(NULLIF(r.role_name, ''), r.role_code) AS role_name
+"""
+
+
+def _initials(display_name: str | None) -> str:
+    parts = [
+        part
+        for part in (display_name or "").replace(".", " ").split()
+        if part and part.lower() not in {"dr"}
+    ]
+    letters = "".join(part[0] for part in parts[:2]).upper()
+    return letters or "??"
+
+
+def _directory_user(row: Any) -> dict[str, Any]:
+    display_name = row["full_name"] or row["username"]
+    return {
+        "id": str(row["user_id"]),
+        "username": row["username"],
+        "email": row["email"],
+        "display_name": display_name,
+        "department": row["department"],
+        "employee_id": row["employee_id"] or "",
+        "is_active": row["is_active"],
+        "role": row["role_name"],
+        "initials": _initials(display_name),
+    }
+
 
 def list_users() -> list[dict[str, Any]]:
     with SessionLocal() as db:
-        rows = db.execute(text("""
-            SELECT u.user_id, u.username, u.email, u.full_name, u.department,
-                   u.employee_id, u.is_active, r.role_name
+        rows = db.execute(text(f"""
+            SELECT {_USER_COLUMNS}
             FROM app_user u
             LEFT JOIN user_role ur ON ur.user_id = u.user_id
             LEFT JOIN role r ON r.role_id = ur.role_id
             WHERE u.is_active = true
-            ORDER BY u.full_name
+            ORDER BY u.user_id, r.access_level DESC NULLS LAST
         """)).mappings().all()
     users: dict[str, dict[str, Any]] = {}
     for row in rows:
-        item = users.setdefault(str(row["user_id"]), {
-            "id": str(row["user_id"]), "username": row["username"],
-            "email": row["email"], "display_name": row["full_name"],
-            "department": row["department"], "employee_id": row["employee_id"],
-            "is_active": row["is_active"], "role": row["role_name"],
-        })
-        if not item.get("role"):
+        key = str(row["user_id"])
+        item = users.get(key)
+        if item is None:
+            users[key] = _directory_user(row)
+            continue
+        if not item.get("role") and row["role_name"]:
             item["role"] = row["role_name"]
-    return list(users.values())
+    return sorted(users.values(), key=lambda item: (item.get("display_name") or "").lower())
 
 
 def find_user(username: str, role: str | None = None) -> dict[str, Any] | None:
-    role_filter = "AND r.role_name = :role" if role else ""
+    role_filter = "AND COALESCE(NULLIF(r.role_name, ''), r.role_code) = :role" if role else ""
     params: dict[str, Any] = {"username": username}
     if role:
         params["role"] = role
     with SessionLocal() as db:
         row = db.execute(text(f"""
-            SELECT u.user_id, u.username, u.email, u.full_name, u.department,
-                   u.employee_id, u.is_active, r.role_name
+            SELECT {_USER_COLUMNS}
             FROM app_user u
             JOIN user_role ur ON ur.user_id = u.user_id
             JOIN role r ON r.role_id = ur.role_id
@@ -50,12 +78,30 @@ def find_user(username: str, role: str | None = None) -> dict[str, Any] | None:
               {role_filter}
             ORDER BY r.access_level DESC LIMIT 1
         """), params).mappings().first()
-    if not row:
+    return _directory_user(row) if row else None
+
+
+def get_directory_user(user_id: str) -> dict[str, Any] | None:
+    """Resolve a production HRM user by UUID, username, or employee id."""
+    key = str(user_id or "").strip()
+    if not key:
         return None
-    return {"id": str(row["user_id"]), "username": row["username"],
-            "email": row["email"], "display_name": row["full_name"],
-            "department": row["department"], "employee_id": row["employee_id"],
-            "is_active": row["is_active"], "role": row["role_name"]}
+    with SessionLocal() as db:
+        row = db.execute(text(f"""
+            SELECT {_USER_COLUMNS}
+            FROM app_user u
+            LEFT JOIN user_role ur ON ur.user_id = u.user_id
+            LEFT JOIN role r ON r.role_id = ur.role_id
+            WHERE u.is_active = true
+              AND (
+                lower(u.user_id::text) = lower(:key)
+                OR lower(u.username) = lower(:key)
+                OR u.employee_id = :key
+              )
+            ORDER BY r.access_level DESC NULLS LAST
+            LIMIT 1
+        """), {"key": key}).mappings().first()
+    return _directory_user(row) if row else None
 
 
 def write_audit(action: str, actor: str, resource: str, result: str = "OK") -> None:

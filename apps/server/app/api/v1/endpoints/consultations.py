@@ -110,10 +110,29 @@ def _is_chair(session: dict[str, Any], user: CurrentUser) -> bool:
 
 
 def _user_by_id(state: dict[str, Any], user_id: str) -> dict[str, Any] | None:
-    for user in state["users"]:
-        if user["id"] == user_id:
+    target = str(user_id or "").strip()
+    if not target:
+        return None
+    folded = target.lower()
+    for user in state.get("users", []):
+        current = str(user.get("id") or "")
+        if current == target or current.lower() == folded:
             return user
     return None
+
+
+def _profile_by_id(state: dict[str, Any], user_id: str) -> dict[str, Any] | None:
+    """Prefer the consultation state, then the production HRM directory.
+
+    Demo sessions still use ids such as ``u-rad-011``. Production ``/users``
+    returns PostgreSQL UUIDs, which are not in that seeded state.
+    """
+    profile = _user_by_id(state, user_id)
+    if profile or settings.demo_mode:
+        return profile
+    from app.services import user_service
+
+    return user_service.get_user(user_id)
 
 
 def _study_record(state: dict[str, Any], study_id: str) -> dict[str, Any] | None:
@@ -453,8 +472,8 @@ async def assign_consultation(
         if session["status"] not in _ASSIGNABLE:
             raise HTTPException(status_code=409, detail="Consultation can no longer be assigned")
 
-        chairman = _user_by_id(state, body.chairman_user_id)
-        if not chairman or chairman.get("role") == "it":
+        chairman = _profile_by_id(state, body.chairman_user_id)
+        if not chairman or str(chairman.get("role") or "").lower() == "it":
             raise HTTPException(status_code=400, detail="Chairman must be a clinician")
 
         members: list[dict[str, Any]] = []
@@ -470,13 +489,13 @@ async def assign_consultation(
 
         add(chairman, "Chair")
         for participant_id in body.participant_user_ids:
-            profile = _user_by_id(state, participant_id)
+            profile = _profile_by_id(state, participant_id)
             if not profile:
                 raise HTTPException(status_code=400, detail=f"Unknown participant {participant_id}")
             add(profile, "Member")
         requester_id = session.get("requested_by_id")
         if requester_id:
-            requester = _user_by_id(state, requester_id)
+            requester = _profile_by_id(state, requester_id)
             if requester:
                 add(requester, "Member")
 
@@ -667,8 +686,8 @@ async def invite_member(
             raise HTTPException(status_code=409, detail="This room is not open for new invitations")
         if not _is_chair(session, user) and not _can_assign(user):
             raise HTTPException(status_code=403, detail="Only the Chairman or Head of Department can invite")
-        profile = _user_by_id(state, body.user_id)
-        if not profile or profile.get("role") == "it":
+        profile = _profile_by_id(state, body.user_id)
+        if not profile or str(profile.get("role") or "").lower() == "it":
             raise HTTPException(status_code=400, detail="Choose an on-duty clinician")
         existing = next(
             (member for member in session.get("members", []) if member.get("user_id") == profile["id"]),
@@ -836,6 +855,10 @@ async def consultation_ws(websocket: WebSocket, consultation_id: str):
         return None
 
     user = store.mutate(find_user)
+    if not user and not settings.demo_mode:
+        from app.db import domain
+
+        user = domain.find_user(username, role)
     if not user:
         await websocket.close(code=4401)
         return
