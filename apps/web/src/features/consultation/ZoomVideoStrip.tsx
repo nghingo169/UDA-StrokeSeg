@@ -170,7 +170,8 @@ export function ZoomVideoStrip({
   if (!active && !zoom && members.length === 0) return null;
 
   const rawNumber = String(zoom?.meeting_number || meetingNumber || "").replace(/\D/g, "");
-  const unavailableRoom = !zoom || !rawNumber;
+  const waitingToJoin = !zoom && Boolean(rawNumber) && rawNumber !== "0";
+  const unavailableRoom = !zoom || !rawNumber || rawNumber === "0";
   const number = formatMeetingNumber(zoom?.meeting_number || meetingNumber);
   const invitees = ON_DUTY_SHIFT.filter(
     (doctor) =>
@@ -184,10 +185,14 @@ export function ZoomVideoStrip({
     <div className="zoom-video-strip" data-status={status} data-testid="zoom-video-strip">
       <div className="section-title">
         <span>Consultation video</span>
-        <em>{unavailableRoom ? "Unavailable" : statusLabel}</em>
+        <em>{unavailableRoom ? (waitingToJoin ? "Connecting" : "Unavailable") : statusLabel}</em>
       </div>
       {unavailableRoom ? (
-        <p className="zoom-fallback-note">No live Zoom meeting is available for this consultation.</p>
+        <p className="zoom-fallback-note">
+          {waitingToJoin
+            ? `Opening Zoom meeting ${number}.`
+            : "No live Zoom meeting is available for this consultation."}
+        </p>
       ) : (
         number && <p className="zoom-fallback-note">Meeting {number}</p>
       )}

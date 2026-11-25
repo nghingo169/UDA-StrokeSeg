@@ -193,6 +193,18 @@ export function VirtualReviewRoom({ sessionId, role, onBack, notify }: Props) {
     }
   };
 
+  const zoomBootRef = useRef(false);
+  useEffect(() => {
+    if (!session || zoom || zoomBootRef.current) return;
+    if (readOnly || pendingAssignment || awaitingConclusion) return;
+    const openable = session.status === "ASSIGNED" || session.status === "WAITING" || session.status === "SCHEDULED" || session.status === "LIVE";
+    if (!openable) return;
+    if (session.status !== "LIVE" && !amChairForSession) return;
+    zoomBootRef.current = true;
+    if (amChairForSession && session.status !== "LIVE") void handleStart();
+    else void handleJoin();
+  }, [session, zoom, readOnly, pendingAssignment, awaitingConclusion, amChairForSession]);
+
   const handleLeave = async () => {
     try {
       await leaveConsultation(sessionId);

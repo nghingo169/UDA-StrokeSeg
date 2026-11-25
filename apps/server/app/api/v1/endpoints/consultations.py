@@ -251,13 +251,20 @@ def _require_assigned(session: dict[str, Any]) -> None:
 
 
 def _ensure_live_meeting(session: dict[str, Any]) -> None:
-    """Create the Zoom meeting when the Chairman starts a room that does not have one.
+    """Attach a real Zoom meeting before the Chairman joins.
 
-    Seeded consultations store a null meeting number. Start must not hand the
-    SDK meeting id "0".
+    A stored mock meeting, or a missing number, is replaced. An existing live
+    meeting number is reused.
     """
     number = str(session.get("zoom_meeting_number") or "").strip()
-    if number and number != "0":
+    mock = bool(session.get("zoom_mock", settings.demo_mode))
+    if number and number != "0" and not mock:
+        return
+    if settings.demo_mode:
+        if not number or number == "0":
+            session["zoom_meeting_number"] = "90000000001"
+            session["zoom_password"] = session.get("zoom_password") or "uda1234"
+        session["zoom_mock"] = True
         return
     try:
         meeting = create_meeting(
