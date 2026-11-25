@@ -35,17 +35,21 @@ def list_users() -> list[dict[str, Any]]:
 
 
 def find_user(username: str, role: str | None = None) -> dict[str, Any] | None:
+    role_filter = "AND r.role_name = :role" if role else ""
+    params: dict[str, Any] = {"username": username}
+    if role:
+        params["role"] = role
     with SessionLocal() as db:
-        row = db.execute(text("""
+        row = db.execute(text(f"""
             SELECT u.user_id, u.username, u.email, u.full_name, u.department,
                    u.employee_id, u.is_active, r.role_name
             FROM app_user u
             JOIN user_role ur ON ur.user_id = u.user_id
             JOIN role r ON r.role_id = ur.role_id
             WHERE u.username = :username AND u.is_active = true
-              AND (:role IS NULL OR r.role_name = :role)
+              {role_filter}
             ORDER BY r.access_level DESC LIMIT 1
-        """), {"username": username, "role": role}).mappings().first()
+        """), params).mappings().first()
     if not row:
         return None
     return {"id": str(row["user_id"]), "username": row["username"],
@@ -94,15 +98,21 @@ def _study(row: Any) -> dict[str, Any]:
 
 
 def list_studies(priority: str | None = None, query: str | None = None) -> list[dict[str, Any]]:
-    sql = """SELECT s.study_id, s.external_id, s.status, s.clinical_data,
+    conditions = ["1 = 1"]
+    params: dict[str, Any] = {}
+    if priority and priority != "All":
+        conditions.append("s.status = :priority")
+        params["priority"] = priority
+    if query:
+        conditions.append("(lower(s.external_id) LIKE lower(:like_query) OR lower(p.external_patient_ref) LIKE lower(:like_query))")
+        params["like_query"] = f"%{query}%"
+    sql = f"""SELECT s.study_id, s.external_id, s.status, s.clinical_data,
              p.external_patient_ref AS patient_ref
              FROM study s JOIN patient p ON p.patient_id = s.patient_id
-             WHERE (:priority IS NULL OR :priority = 'All' OR s.status = :priority)
-             AND (:query IS NULL OR lower(s.external_id) LIKE lower(:like_query)
-                  OR lower(p.external_patient_ref) LIKE lower(:like_query))
+             WHERE {' AND '.join(conditions)}
              ORDER BY s.created_at DESC"""
     with SessionLocal() as db:
-        rows = db.execute(text(sql), {"priority": priority, "query": query, "like_query": f"%{query}%" if query else None}).all()
+        rows = db.execute(text(sql), params).all()
     return [_study(row) for row in rows]
 
 
@@ -154,10 +164,14 @@ def save_report(study_id: str, *, status: str, content: dict[str, Any], signer: 
 
 
 def get_report(study_id: str, status: str | None = None) -> dict[str, Any] | None:
+    status_filter = "AND r.status = :status" if status else ""
+    params: dict[str, Any] = {"study_id": study_id}
+    if status:
+        params["status"] = status
     with SessionLocal() as db:
-        row = db.execute(text("""SELECT r.content, r.status, r.report_version FROM report r JOIN study s ON s.study_id = r.study_id
-            WHERE s.external_id = :study_id AND (:status IS NULL OR r.status = :status)
-            ORDER BY r.report_version DESC LIMIT 1"""), {"study_id": study_id, "status": status}).first()
+        row = db.execute(text(f"""SELECT r.content, r.status, r.report_version FROM report r JOIN study s ON s.study_id = r.study_id
+            WHERE s.external_id = :study_id {status_filter}
+            ORDER BY r.report_version DESC LIMIT 1"""), params).first()
     if not row:
         return None
     return {**(row.content or {}), "status": row.status, "report_version": row.report_version}
