@@ -32,7 +32,11 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Build
+        working-directory: apps/web
         run: npm run build
+
+      - name: Verify Pages output
+        run: test -f apps/web/dist/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -40,7 +44,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'
+          path: './apps/web/dist'
 
       - name: Deploy to GitHub Pages
         id: deployment
