@@ -179,12 +179,12 @@ export async function listSignedStudies<T = unknown>() {
 
 export async function listConsultation<T = unknown>() {
   if (!accessToken) return [] as T[];
-  return request<T[]>("Consultation");
+  return request<T[]>("consultation");
 }
 
 export async function getConsultation<T = unknown>(consultationId: string) {
   if (!accessToken) return null;
-  return request<T>(`Consultation/${consultationId}`);
+  return request<T>(`consultation/${consultationId}`);
 }
 
 export async function createConsultation(payload: {
@@ -192,7 +192,7 @@ export async function createConsultation(payload: {
   trigger_reason: string;
 }) {
   if (!accessToken) return null;
-  return request("Consultation", {
+  return request("consultation", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -208,7 +208,7 @@ export async function assignConsultation(
   payload: { chairman_user_id: string; participant_user_ids: string[] },
 ) {
   if (!accessToken) return null;
-  return request(`Consultation/${consultationId}/assign`, {
+  return request(`consultation/${consultationId}/assign`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -216,7 +216,7 @@ export async function assignConsultation(
 
 export async function inviteConsultationMember(consultationId: string, userId: string) {
   if (!accessToken) return null;
-  return request(`Consultation/${consultationId}/invite`, {
+  return request(`consultation/${consultationId}/invite`, {
     method: "POST",
     body: JSON.stringify({ user_id: userId }),
   });
@@ -224,7 +224,7 @@ export async function inviteConsultationMember(consultationId: string, userId: s
 
 export async function postConsultationNote(consultationId: string, text: string) {
   if (!accessToken) return null;
-  return request(`Consultation/${consultationId}/discussion`, {
+  return request(`consultation/${consultationId}/discussion`, {
     method: "POST",
     body: JSON.stringify({ text }),
   });
@@ -232,13 +232,13 @@ export async function postConsultationNote(consultationId: string, text: string)
 
 export async function enterConsultationLobby(consultationId: string) {
   if (!accessToken) return null;
-  return request(`Consultation/${consultationId}/lobby`, { method: "POST" });
+  return request(`consultation/${consultationId}/lobby`, { method: "POST" });
 }
 
 export async function startConsultation(consultationId: string) {
   if (!accessToken) return null;
   return request<{ session: unknown; zoom: unknown }>(
-    `Consultation/${consultationId}/start`,
+    `consultation/${consultationId}/start`,
     { method: "POST" },
   );
 }
@@ -246,19 +246,19 @@ export async function startConsultation(consultationId: string) {
 export async function joinConsultation(consultationId: string) {
   if (!accessToken) return null;
   return request<{ session: unknown; zoom: unknown; waiting?: boolean }>(
-    `Consultation/${consultationId}/join`,
+    `consultation/${consultationId}/join`,
     { method: "POST" },
   );
 }
 
 export async function leaveConsultation(consultationId: string) {
   if (!accessToken) return null;
-  return request(`Consultation/${consultationId}/leave`, { method: "POST" });
+  return request(`consultation/${consultationId}/leave`, { method: "POST" });
 }
 
 export async function endConsultation(consultationId: string) {
   if (!accessToken) return null;
-  return request(`Consultation/${consultationId}/end`, { method: "POST" });
+  return request(`consultation/${consultationId}/end`, { method: "POST" });
 }
 
 export async function saveConsultationAgreement(
@@ -267,7 +267,7 @@ export async function saveConsultationAgreement(
   note = "",
 ) {
   if (!accessToken) return null;
-  return request(`Consultation/${consultationId}/agreement`, {
+  return request(`consultation/${consultationId}/agreement`, {
     method: "POST",
     body: JSON.stringify({ agreement, note }),
   });
@@ -283,7 +283,7 @@ export async function submitConsultationConclusion(
   },
 ) {
   if (!accessToken) return null;
-  return request(`Consultation/${consultationId}/conclusion`, {
+  return request(`consultation/${consultationId}/conclusion`, {
     method: "POST",
     body: JSON.stringify({
       conclusion: payload.conclusion,
@@ -304,7 +304,7 @@ export async function finalizeConsultationConsensus(
   },
 ) {
   if (!accessToken) return null;
-  return request(`Consultation/${consultationId}/consensus`, {
+  return request(`consultation/${consultationId}/consensus`, {
     method: "POST",
     body: JSON.stringify({
       notes: payload.notes,

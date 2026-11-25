@@ -37,7 +37,7 @@ from app.schemas.consultation_schema import (
 from app.services.consultation_hub import consultation_hub
 from app.services.zoom_meeting import create_meeting, end_meeting, fetch_host_zak, join_payload
 
-router = APIRouter(prefix="/Consultation", tags=["Consultation"])
+router = APIRouter(prefix="/consultation", tags=["Consultation"])
 
 _TERMINAL = {"FINALIZED", "COMPLETED", "CANCELLED", "ENDED_WITHOUT_CONSENSUS"}
 _ASSIGNABLE = {"DRAFT", "PENDING_ASSIGNMENT", "ASSIGNED", "SCHEDULED", "WAITING"}
