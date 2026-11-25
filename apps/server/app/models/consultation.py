@@ -84,6 +84,5 @@ def empty_session(
         "zoom_zak": None,
         "zoom_start_url": None,
         "zoom_join_url": None,
-        "zoom_mock": True,
         "viewport": {"slice": 16, "zoom": 1, "pan_x": 0, "pan_y": 0},
     }

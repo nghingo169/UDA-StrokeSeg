@@ -46,9 +46,6 @@ def _hydrate_Consultation(state: dict[str, Any]) -> dict[str, Any]:
         item.setdefault("attendance", [])
         item.setdefault("discussion", [])
         item.setdefault("lead_chair_id", item.get("lead_chair_id") or "")
-        meeting_number = item.get("zoom_meeting_number")
-        if meeting_number and not item.get("zoom_zak"):
-            item["zoom_zak"] = f"mock-zak-{meeting_number}"
         if item.get("status") in {"FINALIZED", "COMPLETED"} and not item.get("digital_signature"):
             item["digital_signature"] = "sig-v1:seed"
             item["signed_by"] = item.get("signed_by") or "thomas.nguyen"
@@ -312,12 +309,11 @@ def _seed() -> dict[str, Any]:
                 "started_at": None,
                 "ended_at": None,
                 "created_at": _now(),
-                "zoom_meeting_number": "9000913018",
-                "zoom_password": "uda0918",
-                "zoom_zak": "mock-zak-9000913018",
-                "zoom_start_url": "https://zoom.us/s/9000913018?zak=mock",
-                "zoom_join_url": "https://zoom.us/j/9000913018?pwd=mock",
-                "zoom_mock": True,
+                "zoom_meeting_number": None,
+                "zoom_password": None,
+                "zoom_zak": None,
+                "zoom_start_url": None,
+                "zoom_join_url": None,
                 "viewport": {"slice": 14, "zoom": 1, "pan_x": 0, "pan_y": 0},
                 "members": [
                     {
@@ -348,11 +344,10 @@ def _seed() -> dict[str, Any]:
                 "started_at": None,
                 "ended_at": None,
                 "created_at": _now(),
-                "zoom_meeting_number": "9000913012",
-                "zoom_password": "uda0913",
-                "zoom_start_url": "https://zoom.us/s/9000913012?zak=mock",
-                "zoom_join_url": "https://zoom.us/j/9000913012?pwd=mock",
-                "zoom_mock": True,
+                "zoom_meeting_number": None,
+                "zoom_password": None,
+                "zoom_start_url": None,
+                "zoom_join_url": None,
                 "viewport": {"slice": 16, "zoom": 1, "pan_x": 0, "pan_y": 0},
                 "members": [
                     {
@@ -421,11 +416,10 @@ def _seed() -> dict[str, Any]:
                 "started_at": _now(),
                 "ended_at": _now(),
                 "created_at": _now(),
-                "zoom_meeting_number": "9000913009",
-                "zoom_password": "uda0909",
+                "zoom_meeting_number": None,
+                "zoom_password": None,
                 "zoom_start_url": None,
-                "zoom_join_url": "https://zoom.us/j/9000913009?pwd=mock",
-                "zoom_mock": True,
+                "zoom_join_url": None,
                 "viewport": {"slice": 12, "zoom": 1, "pan_x": 0, "pan_y": 0},
                 "members": [
                     {

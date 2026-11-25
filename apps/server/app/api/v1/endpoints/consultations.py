@@ -226,7 +226,6 @@ def _zoom_for(session: dict[str, Any], user: CurrentUser, role: int) -> dict[str
         display_name=user.display_name,
         email=f"{user.username}@demo.uda.local",
         role=role,
-        mock=bool(session.get("zoom_mock", True)),
         staff_id=_staff_id(user),
         zak=_host_zak(session) if role == 1 else None,
     )
@@ -422,7 +421,6 @@ def create_consultation(
         session["zoom_zak"] = meeting.get("zak")
         session["zoom_start_url"] = meeting.get("start_url")
         session["zoom_join_url"] = meeting.get("join_url")
-        session["zoom_mock"] = bool(meeting.get("mock", True))
         state["Consultation"].insert(0, session)
         return _public_session(session)
 

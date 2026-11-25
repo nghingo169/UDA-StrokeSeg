@@ -26,11 +26,11 @@ def credentials_present() -> bool:
 
 
 def sdk_app_key() -> str:
-    return settings.zoom_sdk_key or settings.zoom_client_id or "demo-sdk-key"
+    return settings.zoom_sdk_key or settings.zoom_client_id
 
 
 def sdk_app_secret() -> str:
-    return settings.zoom_sdk_secret or settings.zoom_client_secret or "demo-sdk-secret"
+    return settings.zoom_sdk_secret or settings.zoom_client_secret
 
 
 def _stored_refresh_token() -> str:
@@ -308,7 +308,6 @@ def join_payload(
     display_name: str,
     email: str,
     role: int,
-    mock: bool,
     staff_id: str = "",
     zak: str | None = None,
 ) -> dict[str, Any]:
@@ -319,11 +318,10 @@ def join_payload(
         "password": password or "",
         "signature": sign_meeting_sdk_jwt(meeting_number=str(meeting_number), role=role),
         "sdk_key": sdk_app_key(),
-        "sdk_lib_version": settings.zoom_sdk_version or "2.18.1",
+        "sdk_lib_version": settings.zoom_sdk_version or "6.10.0",
         "user_name": labeled,
-        "user_email": email or f"{display_name.replace(' ', '.').lower()}@demo.uda.local",
+        "user_email": email,
         "staff_id": staff_id,
         "role": role,
         "zak": zak if role == 1 else None,
-        "mock": bool(mock),
     }

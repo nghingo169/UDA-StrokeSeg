@@ -96,15 +96,6 @@ export function ZoomVideoStrip({
         if (!cancelled) setStatus("idle");
         return;
       }
-      if (zoom.mock) {
-        leave();
-        if (!cancelled) {
-          setStatus("error");
-          setError("This room has no live Zoom meeting. Create a new consultation.");
-        }
-        return;
-      }
-
       setStatus("connecting");
       setError("");
       const ZoomMtg = await loadZoomClientView();
@@ -179,7 +170,7 @@ export function ZoomVideoStrip({
   if (!active && !zoom && members.length === 0) return null;
 
   const rawNumber = String(zoom?.meeting_number || meetingNumber || "").replace(/\D/g, "");
-  const legacyRoom = !!zoom?.mock || rawNumber.startsWith("900");
+  const unavailableRoom = !zoom || !rawNumber;
   const number = formatMeetingNumber(zoom?.meeting_number || meetingNumber);
   const invitees = ON_DUTY_SHIFT.filter((doctor) => !members.some((member) => member.user_id === doctor.id));
   const statusLabel = status === "live" ? "In meeting" : status === "connecting" ? "Connecting" : "Zoom";
@@ -188,16 +179,16 @@ export function ZoomVideoStrip({
     <div className="zoom-video-strip" data-status={status} data-testid="zoom-video-strip">
       <div className="section-title">
         <span>Consultation video</span>
-        <em>{legacyRoom ? "Unavailable" : statusLabel}</em>
+        <em>{unavailableRoom ? "Unavailable" : statusLabel}</em>
       </div>
-      {legacyRoom ? (
-        <p className="zoom-fallback-note">This room has no live Zoom meeting. Create a new consultation.</p>
+      {unavailableRoom ? (
+        <p className="zoom-fallback-note">No live Zoom meeting is available for this consultation.</p>
       ) : (
         number && <p className="zoom-fallback-note">Meeting {number}</p>
       )}
-      {!legacyRoom && error && <p className="zoom-fallback-note">{error}</p>}
-      <div ref={hostRef} id="zoom-consultation-root" className="zoom-sdk-root" hidden={legacyRoom || status === "error"} />
-      {canInvite && onInvite && !legacyRoom && invitees.length > 0 && (
+      {!unavailableRoom && error && <p className="zoom-fallback-note">{error}</p>}
+      <div ref={hostRef} id="zoom-consultation-root" className="zoom-sdk-root" hidden={unavailableRoom || status === "error"} />
+      {canInvite && onInvite && !unavailableRoom && invitees.length > 0 && (
         <form
           className="zoom-invite-row"
           onSubmit={(event) => {

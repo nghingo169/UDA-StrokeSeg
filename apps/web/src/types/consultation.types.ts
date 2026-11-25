@@ -96,7 +96,6 @@ export interface Consultationession {
   created_at: string | null;
   zoom_meeting_number: string | null;
   zoom_join_url: string | null;
-  zoom_mock: boolean;
   viewport: ConsultationViewport;
 }
 
@@ -111,7 +110,6 @@ export interface ZoomJoinPayload {
   staff_id: string;
   role: number;
   zak: string | null;
-  mock: boolean;
 }
 
 export interface DirectoryUser {

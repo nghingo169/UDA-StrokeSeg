@@ -24,9 +24,9 @@ class Settings(BaseSettings):
     zoom_client_secret: str = ""
     zoom_sdk_key: str = ""
     zoom_sdk_secret: str = ""
-    zoom_redirect_uri: str = "http://127.0.0.1:8000/api/v1/zoom/callback"
+    zoom_redirect_uri: str = "https://uda-strokeseg.vercel.app/api/v1/zoom/callback"
     zoom_host_user_id: str = "me"
-    zoom_sdk_version: str = "2.18.1"
+    zoom_sdk_version: str = "6.10.0"
     zoom_webhook_secret: str = ""
 
 

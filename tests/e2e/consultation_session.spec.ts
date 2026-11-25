@@ -30,11 +30,7 @@ test.describe("consultation_session lifecycle", () => {
     const session = await create.json();
     expect(session.status).toBe("PENDING_ASSIGNMENT");
     expect(session.zoom_meeting_number).toBeTruthy();
-    if (session.zoom_mock) {
-      expect(String(session.zoom_meeting_number).startsWith("900")).toBeTruthy();
-    } else {
-      expect(String(session.zoom_meeting_number).startsWith("900")).toBeFalsy();
-    }
+    expect(String(session.zoom_meeting_number).startsWith("900")).toBeFalsy();
     expect(session.zoom_zak).toBeUndefined();
 
     const assign = await request.post(`${API}Consultation/${session.id}/assign`, {
@@ -56,10 +52,7 @@ test.describe("consultation_session lifecycle", () => {
     expect(started.zoom.signature).toBeTruthy();
     expect(started.zoom.role).toBe(1);
     expect(started.zoom.zak).toBeTruthy();
-    expect(started.zoom.mock).toBe(session.zoom_mock);
-    if (started.zoom.mock) {
-      expect(String(started.zoom.zak).startsWith("mock-zak-")).toBeTruthy();
-    }
+    expect(String(started.zoom.zak || "").startsWith("mock-zak-")).toBeFalsy();
 
     const join = await request.post(`${API}Consultation/${session.id}/join`, {
       headers: { Authorization: `Bearer ${memberToken}` },

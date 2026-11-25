@@ -67,7 +67,7 @@ Use returned `access_token` as `Authorization: Bearer <token>`.
 
 Lifecycle under `/api/v1/consultation`:
 
-1. `POST Consultation` - radiologist requests a room. The standing chairman (physician) may also open one, but only for a study whose status is `Critical`. Creates a Zoom meeting (password, waiting room, camera and mic off) and stores `meeting_id`, password, and host ZAK server-side. Status `PENDING_ASSIGNMENT`. Meeting numbers that start with `900` are demo rooms (`zoom_mock: true`) and stay that way.
+1. `POST Consultation` - radiologist requests a room. The standing chairman (physician) may also open one, but only for a study whose status is `Critical`. Creates a real Zoom meeting (password, waiting room, camera and mic off) and stores `meeting_id`, password, and host ZAK server-side. Status `PENDING_ASSIGNMENT`.
 2. `POST Consultation/{id}/assign` - Head of Department (or a user flagged `consultation_delegate`). The standing chairman may assign themselves on a Critical study they just opened. Sets the Chairman and participants, then writes in-app notices plus an email log.
 3. `POST Consultation/{id}/start|join` - Chairman receives SDK signature role `1` and a ZAK. Participants receive role `0` and their staff id in the display name. Attendance is appended for the audit log.
 4. `POST Consultation/{id}/end` or `POST Consultation/zoom/webhook` with `meeting.ended` - status `AWAITING_CONCLUSION`.
@@ -76,7 +76,7 @@ Lifecycle under `/api/v1/consultation`:
 `POST Consultation/{id}/consensus` is the same closure as `/conclusion`.
 `WS Consultation/{id}/ws?token=...` syncs the shared viewport.
 
-Without Zoom credentials the API returns **mock** meeting numbers, ZAK values, and SDK JWTs (`zoom_mock: true`). Optional env (prefix `UDA_`):
+The API requires a connected Zoom account to create consultations and never returns mock meetings. Optional env (prefix `UDA_`):
 
 ```env
 UDA_ZOOM_ACCOUNT_ID=
@@ -84,17 +84,17 @@ UDA_ZOOM_CLIENT_ID=
 UDA_ZOOM_CLIENT_SECRET=
 UDA_ZOOM_SDK_KEY=
 UDA_ZOOM_SDK_SECRET=
-UDA_ZOOM_REDIRECT_URI=https://<your-ngrok-host>/api/v1/zoom/callback
+UDA_ZOOM_REDIRECT_URI=https://uda-strokeseg.vercel.app/api/v1/zoom/callback
 UDA_ZOOM_HOST_USER_ID=me
-UDA_ZOOM_SDK_VERSION=2.18.1
+UDA_ZOOM_SDK_VERSION=6.10.0
 UDA_ZOOM_WEBHOOK_SECRET=
 ```
 
-Put the real values in `apps/server/.env` only. A General app uses one Client ID and Client Secret for both REST and the Meeting SDK JWT, so `UDA_ZOOM_SDK_KEY` and `UDA_ZOOM_SDK_SECRET` can stay empty. Leave `UDA_ZOOM_ACCOUNT_ID` empty unless the app is Server-to-Server OAuth. After the keys are set, open `http://127.0.0.1:8000/api/v1/zoom/authorize` once so Zoom can store a refresh token outside the repo. The redirect URL in the Zoom app must match `UDA_ZOOM_REDIRECT_URI` exactly. Rooms created before that grant keep their `900…` meeting numbers and stay in demo mode; create a new consultation to get a live meeting.
+Put the real values in `apps/server/.env` only. A General app uses one Client ID and Client Secret for both REST and the Meeting SDK JWT, so `UDA_ZOOM_SDK_KEY` and `UDA_ZOOM_SDK_SECRET` can stay empty. Leave `UDA_ZOOM_ACCOUNT_ID` empty unless the app is Server-to-Server OAuth. After the keys are set, open `https://uda-strokeseg.vercel.app/api/v1/zoom/authorize` once. The redirect URL in the Zoom app must match `UDA_ZOOM_REDIRECT_URI` exactly. Existing seeded consultations do not contain Zoom meetings; create a new consultation after authorization.
 
 When `UDA_ZOOM_WEBHOOK_SECRET` is set, `meeting.ended` must send header `x-uda-webhook-token` equal to the hex HMAC-SHA256 of the raw body.
 
-Frontend Client View uses `@zoom/meetingsdk` in `apps/web` (`npm install @zoom/meetingsdk -w @uda-strokeseg/web` from the repo root). While `zoom_mock` is true, the room shows the demo video strip. The Chairman join payload includes `zak` for `ZoomMtg.join`.
+Frontend Client View uses `@zoom/meetingsdk` in `apps/web` (`npm install @zoom/meetingsdk -w @uda-strokeseg/web` from the repo root). The Chairman join payload includes `zak` for `ZoomMtg.join`.
 
 ## Frontend proxy
 
