@@ -12,6 +12,7 @@ import {
   ConsultationStatusLabel,
   displayTriggerReason,
   formatMeetingNumber,
+  sameClinician,
 } from "../../types/consultation.types";
 import {
   endConsultation,
@@ -75,7 +76,7 @@ export function VirtualReviewRoom({ sessionId, role, onBack, notify }: Props) {
     session &&
       (session.lead_chair_id === actor.id ||
         session.members.some(
-          (member) => member.user_id === actor.id && member.role_in_session === "Chair",
+          (member) => member.role_in_session === "Chair" && sameClinician(actor, member),
         )),
   );
 

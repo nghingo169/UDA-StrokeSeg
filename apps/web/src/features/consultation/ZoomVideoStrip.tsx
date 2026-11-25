@@ -172,7 +172,12 @@ export function ZoomVideoStrip({
   const rawNumber = String(zoom?.meeting_number || meetingNumber || "").replace(/\D/g, "");
   const unavailableRoom = !zoom || !rawNumber;
   const number = formatMeetingNumber(zoom?.meeting_number || meetingNumber);
-  const invitees = ON_DUTY_SHIFT.filter((doctor) => !members.some((member) => member.user_id === doctor.id));
+  const invitees = ON_DUTY_SHIFT.filter(
+    (doctor) =>
+      !members.some(
+        (member) => member.user_id === doctor.id || member.employee_id === doctor.employee_id,
+      ),
+  );
   const statusLabel = status === "live" ? "In meeting" : status === "connecting" ? "Connecting" : "Zoom";
 
   return (

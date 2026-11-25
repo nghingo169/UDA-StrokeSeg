@@ -25,6 +25,21 @@ export type AgreementWithAI =
   | "";
 export type ClinicalRole = "radiologist" | "physician" | "hod" | "it";
 
+export function sameClinician(
+  actor: { id: string; username: string; employeeId: string },
+  person: { user_id?: string; username?: string; employee_id?: string } | null | undefined,
+): boolean {
+  if (!person) return false;
+  const userId = String(person.user_id || "");
+  const username = String(person.username || "").trim().toLowerCase();
+  const employeeId = String(person.employee_id || "").trim();
+  return (
+    (userId !== "" && userId === actor.id) ||
+    (username !== "" && username === actor.username.trim().toLowerCase()) ||
+    (employeeId !== "" && employeeId === actor.employeeId)
+  );
+}
+
 export const DEMO_ACTORS: Record<
   ClinicalRole,
   { id: string; username: string; employeeId: string }

@@ -5,6 +5,7 @@ import {
   DEMO_ACTORS,
   ON_DUTY_SHIFT,
   displayTriggerReason,
+  sameClinician,
 } from "../../types/consultation.types";
 import {
   assignConsultation,
@@ -453,7 +454,7 @@ export function ConsultationLobby({
                   key={session.id}
                   session={session}
                   role={role}
-                  actorId={actor.id}
+                  actor={actor}
                   canAssign={canAssign}
                   assigning={assigningId === session.id}
                   doctors={doctors}
@@ -505,7 +506,7 @@ export function ConsultationLobby({
 function SessionCard({
   session,
   role,
-  actorId,
+  actor,
   canAssign,
   assigning,
   doctors,
@@ -521,7 +522,7 @@ function SessionCard({
 }: {
   session: Consultationession;
   role: ClinicalRole;
-  actorId: string;
+  actor: { id: string; username: string; employeeId: string };
   canAssign: boolean;
   assigning: boolean;
   doctors: DirectoryUser[];
@@ -536,8 +537,12 @@ function SessionCard({
   onOpen: () => void;
 }) {
   const chair = session.members.find((member) => member.role_in_session === "Chair");
-  const isChair = session.lead_chair_id === actorId || chair?.user_id === actorId;
-  const isMember = session.members.some((member) => member.user_id === actorId);
+  const isChair =
+    sameClinician(actor, chair) ||
+    session.members.some(
+      (member) => member.role_in_session === "Chair" && sameClinician(actor, member),
+    );
+  const isMember = session.members.some((member) => sameClinician(actor, member));
   const inRoom = session.members.filter((member) => member.presence === "IN_ROOM").length;
   const closed = isClosed(session.status);
   const needsChair = session.status === "PENDING_ASSIGNMENT";
@@ -584,7 +589,9 @@ function SessionCard({
       </p>
       <div className="panel-avatars" aria-label="Invited doctors">
         {session.members.map((member) => {
-          const onDuty = ON_DUTY_SHIFT.some((doctor) => doctor.id === member.user_id);
+          const onDuty = ON_DUTY_SHIFT.some(
+            (doctor) => doctor.id === member.user_id || doctor.employee_id === member.employee_id,
+          );
           return (
             <span key={member.user_id} className="duty-avatar" title={`${member.display_name}${onDuty ? " · On duty" : ""}`}>
               <span className="avatar">{member.initials}</span>
@@ -618,7 +625,11 @@ function SessionCard({
               {doctors.map((doctor) => (
                 <option key={doctor.id} value={doctor.id}>
                   {doctor.display_name} · {doctor.employee_id}
-                  {ON_DUTY_SHIFT.some((item) => item.id === doctor.id) ? " · On duty" : ""}
+                  {ON_DUTY_SHIFT.some(
+                    (item) => item.id === doctor.id || item.employee_id === doctor.employee_id,
+                  )
+                    ? " · On duty"
+                    : ""}
                 </option>
               ))}
             </select>

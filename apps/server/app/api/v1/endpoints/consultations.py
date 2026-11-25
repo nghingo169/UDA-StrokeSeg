@@ -35,7 +35,13 @@ from app.schemas.consultation_schema import (
     InviteMemberRequest,
 )
 from app.services.consultation_hub import consultation_hub
-from app.services.zoom_meeting import create_meeting, end_meeting, fetch_host_zak, join_payload
+from app.services.zoom_meeting import (
+    ZoomUnavailable,
+    create_meeting,
+    end_meeting,
+    fetch_host_zak,
+    join_payload,
+)
 
 router = APIRouter(prefix="/consultation", tags=["Consultation"])
 
@@ -86,11 +92,21 @@ def _find_by_meeting(state: dict[str, Any], meeting_id: str) -> dict[str, Any] |
     return None
 
 
+def _same_person(member: dict[str, Any], user: CurrentUser) -> bool:
+    """Match a panel member to the signed-in account across demo ids and HRM UUIDs."""
+    username = str(member.get("username") or "").strip().lower()
+    if username and username == str(user.username or "").strip().lower():
+        return True
+    user_id = str(user.get("id") or "")
+    if user_id and str(member.get("user_id") or "") == user_id:
+        return True
+    employee_id = str(user.get("employee_id") or "").strip()
+    return bool(employee_id) and str(member.get("employee_id") or "").strip() == employee_id
+
+
 def _find_member(session: dict[str, Any], user: CurrentUser) -> dict[str, Any] | None:
     for member in session.get("members", []):
-        if isinstance(member, dict) and (
-            member.get("username") == user.username or member.get("user_id") == user.get("id")
-        ):
+        if isinstance(member, dict) and _same_person(member, user):
             return member
     return None
 
@@ -232,6 +248,29 @@ def _require_assigned(session: dict[str, Any]) -> None:
         raise HTTPException(status_code=409, detail="Consultation already ended")
     if session["status"] == "PENDING_ASSIGNMENT" or not session.get("lead_chair_id"):
         raise HTTPException(status_code=409, detail="Chairman has not been assigned")
+
+
+def _ensure_live_meeting(session: dict[str, Any]) -> None:
+    """Create the Zoom meeting when the Chairman starts a room that does not have one.
+
+    Seeded consultations store a null meeting number. Start must not hand the
+    SDK meeting id "0".
+    """
+    number = str(session.get("zoom_meeting_number") or "").strip()
+    if number and number != "0":
+        return
+    try:
+        meeting = create_meeting(
+            topic=f"UDA-StrokeSeg consultation {session.get('id')} · {session.get('study_id')}"
+        )
+    except ZoomUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    session["zoom_mock"] = bool(meeting.get("mock", False))
+    session["zoom_meeting_number"] = str(meeting["id"])
+    session["zoom_password"] = meeting.get("password") or ""
+    session["zoom_zak"] = meeting.get("zak")
+    session["zoom_start_url"] = meeting.get("start_url")
+    session["zoom_join_url"] = meeting.get("join_url")
 
 
 def _host_zak(session: dict[str, Any]) -> str | None:
@@ -480,11 +519,13 @@ async def assign_consultation(
         seen: set[str] = set()
 
         def add(profile: dict[str, Any], role: RoleInSession) -> None:
-            if profile["id"] in seen:
+            identity = str(profile.get("username") or profile["id"]).strip().lower()
+            if profile["id"] in seen or identity in seen:
                 return
-            if profile.get("role") == "it":
+            if str(profile.get("role") or "").lower() == "it":
                 raise HTTPException(status_code=400, detail="IT accounts cannot join a consultation")
             seen.add(profile["id"])
+            seen.add(identity)
             members.append(_member_from_user(profile, role))
 
         add(chairman, "Chair")
@@ -567,6 +608,7 @@ async def start_consultation(consultation_id: str, user: CurrentUser = Depends(g
         member["presence"] = "IN_ROOM"
         member["joined_at"] = _now()
         _record_attendance(session, user, "host")
+        _ensure_live_meeting(session)
         zoom = _zoom_for(session, user, 1)
         return {"session": _public_session(session), "zoom": zoom}
 
@@ -602,6 +644,7 @@ async def join_consultation(consultation_id: str, user: CurrentUser = Depends(ge
         member["joined_at"] = _now()
         role = 1 if is_host else 0
         _record_attendance(session, user, "host" if is_host else "participant")
+        _ensure_live_meeting(session)
         zoom = _zoom_for(session, user, role)
         return {"session": _public_session(session), "zoom": zoom, "waiting": False}
 
@@ -690,7 +733,19 @@ async def invite_member(
         if not profile or str(profile.get("role") or "").lower() == "it":
             raise HTTPException(status_code=400, detail="Choose an on-duty clinician")
         existing = next(
-            (member for member in session.get("members", []) if member.get("user_id") == profile["id"]),
+            (
+                member
+                for member in session.get("members", [])
+                if member.get("user_id") == profile["id"]
+                or (
+                    member.get("username")
+                    and str(member.get("username")).lower() == str(profile.get("username") or "").lower()
+                )
+                or (
+                    profile.get("employee_id")
+                    and member.get("employee_id") == profile.get("employee_id")
+                )
+            ),
             None,
         )
         if existing:

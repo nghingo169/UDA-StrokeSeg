@@ -1,24 +1,4 @@
-Mình sẽ chuyển toàn bộ architecture sang phương án **0 đồng/local-first**, giữ Kafka và đủ Bronze–Silver–Gold nhưng không phụ thuộc MSK, Databricks trả phí hay RDS. Mình cũng sẽ đọc các file trong `notes/dbml` để map đúng với ERD hiện tại trước khi chốt plan.
-
-Ran terminal command: Get-ChildItem -LiteralPath 'notes/dbml' -Recurse -File | Select-Object FullName,Length
-
-Ran terminal command: Get-Content -Raw -LiteralPath 'ops/docker/docker-compose.dev.yml'
-
-Ran terminal command: "Get-ChildItem -LiteralPath 'notes/dbml' -Recurse -File | ForEach-Object { Write-Output ('--- '+"'$_.FullName+'"' ---'); Get-Content -LiteralPath "'$_.FullName -TotalCount 260 }'
-
-Ran terminal command: Get-Content -Raw -LiteralPath 'ops/docker/README.md'
-
-
-
-Được. Với tình hình **không có ngân sách**, architecture nên chuyển sang mô hình:
-
-```text
-Local-first + cloud-optional
-```
-
-Tức là toàn bộ hệ thống chạy được bằng Docker trên máy cá nhân, còn AWS/S3/Databricks chỉ là option để demo hoặc deploy sau này.
-
-## 1. Stack 0 đồng nên chốt
+## 1. Stack
 
 | Thành phần | Lựa chọn chính | Vai trò |
 |---|---|---|
@@ -35,13 +15,9 @@ Tức là toàn bộ hệ thống chạy được bằng Docker trên máy cá n
 
 Hiện tại project đã có PostgreSQL và Kafka trong `docker-compose.dev.yml` và đã có topic nền tảng được ghi trong `ops/docker/README.md`.
 
-Mình đề xuất bổ sung MinIO vào Docker Compose để storage cũng chạy local, thay vì phụ thuộc S3 ngay từ đầu.
-
-AWS S3 vẫn là đích deploy hợp lý sau này vì hỗ trợ encryption mặc định, Versioning và Object Lock; nhưng dùng S3 Free Tier vẫn có nguy cơ phát sinh phí nếu vượt quota hoặc sau thời gian miễn phí. [S3 encryption](https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingEncryption.html), [S3 Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock-configure.html)
-
 ---
 
-# 2. Architecture 0 đồng
+# 2. Architecture
 
 ```text
                     ┌──────────────────┐
@@ -806,7 +782,7 @@ HashChainValue text
 
 ---
 
-# 12. AI pipeline 0 đồng
+# 12. AI pipeline
 
 ## Local CPU
 
@@ -852,7 +828,7 @@ approved_status
 
 ---
 
-# 13. Backup 0 đồng
+# 13. Backup
 
 ## PostgreSQL
 
