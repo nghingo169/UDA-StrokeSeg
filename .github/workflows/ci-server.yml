@@ -21,7 +21,9 @@ jobs:
           python-version: '3.11'
           cache: pip
           cache-dependency-path: apps/server/requirements.txt
-      - run: python -m pip install -r apps/server/requirements.txt pytest
+      # Starlette's TestClient delegates to httpx; keep this test-only package
+      # out of the production Vercel runtime requirements.
+      - run: python -m pip install -r apps/server/requirements.txt pytest httpx
       - run: python -m compileall -q apps/server/app
       - name: Run backend tests when present
         shell: bash
