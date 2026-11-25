@@ -11,6 +11,7 @@ const ROLE_USER: Record<DemoRole, string> = {
 
 let accessToken: string | null = null;
 let apiReachable = false;
+const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 export function getDemoToken() {
   return accessToken;
@@ -18,6 +19,20 @@ export function getDemoToken() {
 
 export function isDemoApiReachable() {
   return apiReachable;
+}
+
+export async function loginApi(username: string, password: string, role?: DemoRole) {
+  const data = await request<{ access_token: string; role: DemoRole }>(
+    "/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify({ username, password, role }),
+    },
+    false,
+  );
+  accessToken = data.access_token;
+  apiReachable = true;
+  return data;
 }
 
 async function request<T>(
@@ -29,7 +44,7 @@ async function request<T>(
   headers.set("Content-Type", "application/json");
   if (auth && accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const response = await fetch(`/api/v1${normalizedPath}`, { ...init, headers });
+  const response = await fetch(`${API_BASE_URL}/api/v1${normalizedPath}`, { ...init, headers });
   if (!response.ok) {
     const detail = await response.text();
     let message = detail || `API ${response.status}`;
@@ -61,26 +76,13 @@ export async function pingDemoApi(): Promise<boolean> {
 }
 
 export async function loginDemoApi(role: DemoRole, password = "Pass@123") {
-  const data = await request<{ access_token: string }>(
-    "/auth/login",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        username: ROLE_USER[role],
-        password,
-        role,
-      }),
-    },
-    false,
-  );
-  accessToken = data.access_token;
-  apiReachable = true;
-  return data;
+  return loginApi(ROLE_USER[role], password, role);
 }
 
 export async function ensureDemoSession(role: DemoRole) {
   const up = await pingDemoApi();
   if (!up) return false;
+  if (accessToken) return true;
   try {
     await loginDemoApi(role);
     return true;

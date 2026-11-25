@@ -1,0 +1,1162 @@
+Mình sẽ chuyển toàn bộ architecture sang phương án **0 đồng/local-first**, giữ Kafka và đủ Bronze–Silver–Gold nhưng không phụ thuộc MSK, Databricks trả phí hay RDS. Mình cũng sẽ đọc các file trong `notes/dbml` để map đúng với ERD hiện tại trước khi chốt plan.
+
+Ran terminal command: Get-ChildItem -LiteralPath 'notes/dbml' -Recurse -File | Select-Object FullName,Length
+
+Ran terminal command: Get-Content -Raw -LiteralPath 'ops/docker/docker-compose.dev.yml'
+
+Ran terminal command: "Get-ChildItem -LiteralPath 'notes/dbml' -Recurse -File | ForEach-Object { Write-Output ('--- '+"'$_.FullName+'"' ---'); Get-Content -LiteralPath "'$_.FullName -TotalCount 260 }'
+
+Ran terminal command: Get-Content -Raw -LiteralPath 'ops/docker/README.md'
+
+
+
+Được. Với tình hình **không có ngân sách**, architecture nên chuyển sang mô hình:
+
+```text
+Local-first + cloud-optional
+```
+
+Tức là toàn bộ hệ thống chạy được bằng Docker trên máy cá nhân, còn AWS/S3/Databricks chỉ là option để demo hoặc deploy sau này.
+
+## 1. Stack 0 đồng nên chốt
+
+| Thành phần | Lựa chọn chính | Vai trò |
+|---|---|---|
+| Operational DB | PostgreSQL Docker local | API, workflow, RBAC, study current state |
+| Kafka | Apache Kafka KRaft Docker local | Event backbone |
+| Kafka UI | Kafka UI Docker | Quan sát topic/consumer |
+| Object Storage | MinIO Docker local | DICOM, NIfTI, mask, report, model |
+| Delta Lake | PySpark + `delta-spark` local | Bronze/Silver/Gold |
+| API | FastAPI local | Gateway và business workflow |
+| Frontend | React/Vite local | Clinical UI |
+| AI worker | CPU local hoặc Colab/Kaggle | Inference prototype |
+| BI dashboard | React hiện tại hoặc Streamlit/DuckDB | Dashboard phân tích |
+| Deployment demo | Local Docker Compose | Không phát sinh cloud cost |
+
+Hiện tại project đã có PostgreSQL và Kafka trong `docker-compose.dev.yml` và đã có topic nền tảng được ghi trong `ops/docker/README.md`.
+
+Mình đề xuất bổ sung MinIO vào Docker Compose để storage cũng chạy local, thay vì phụ thuộc S3 ngay từ đầu.
+
+AWS S3 vẫn là đích deploy hợp lý sau này vì hỗ trợ encryption mặc định, Versioning và Object Lock; nhưng dùng S3 Free Tier vẫn có nguy cơ phát sinh phí nếu vượt quota hoặc sau thời gian miễn phí. [S3 encryption](https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingEncryption.html), [S3 Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock-configure.html)
+
+---
+
+# 2. Architecture 0 đồng
+
+```text
+                    ┌──────────────────┐
+                    │  React Frontend  │
+                    │ localhost:8443   │
+                    └────────┬─────────┘
+                             │ REST/WebSocket
+                             ▼
+                    ┌──────────────────┐
+                    │  FastAPI Gateway │
+                    │ localhost:8000   │
+                    └──────┬─────┬─────┘
+                           │     │
+                  SQL      │     │ Kafka events
+                           ▼     ▼
+                 ┌──────────────┐  ┌──────────────┐
+                 │ PostgreSQL  │  │ Kafka KRaft  │
+                 │ current DB  │  │ localhost    │
+                 └──────────────┘  └──────┬───────┘
+                                           │
+                         ┌─────────────────┼─────────────────┐
+                         ▼                 ▼                 ▼
+                  Validation Worker   AI Worker       Audit Worker
+                         │                 │                 │
+                         └─────────────────┼─────────────────┘
+                                           ▼
+                                  ┌─────────────────┐
+                                  │ Bronze Delta    │
+                                  │ raw events      │
+                                  └────────┬────────┘
+                                           ▼
+                                  ┌─────────────────┐
+                                  │ Silver Delta    │
+                                  │ clean clinical  │
+                                  └────────┬────────┘
+                                           ▼
+                                  ┌─────────────────┐
+                                  │ Gold Delta      │
+                                  │ dashboard marts │
+                                  └────────┬────────┘
+                                           ▼
+                                  React / Streamlit
+```
+
+Object files đi theo flow riêng:
+
+```text
+PACS / upload
+    │
+    ▼
+MinIO raw bucket
+    │
+    ├── DICOM
+    ├── NIfTI
+    ├── masks
+    ├── reports
+    └── model artifacts
+```
+
+Kafka chỉ gửi metadata và event reference, không gửi binary DICOM.
+
+---
+
+# 3. Phân chia trách nhiệm
+
+## PostgreSQL Docker
+
+PostgreSQL giữ **operational state**, tức trạng thái hiện tại cần API đọc/ghi nhanh.
+
+Theo DBML hiện tại trong `notes/dbml`, PostgreSQL sẽ giữ:
+
+```text
+Role
+User
+UserRole
+
+SiteSource
+Scanner
+Study
+Series
+StorageObject
+
+QuarantineLog
+Reason
+AuditLog
+
+Model
+ModelVersion
+DomainAdaptationRun
+InferenceTask
+
+SegmentationMask
+LesionMeasurement
+
+ClinicalFeedback
+ConsultationSession
+ConsultationMinutes
+ConsultationMember
+Report
+```
+
+Đây là phần rất phù hợp với PostgreSQL vì có:
+
+- foreign key;
+- transaction;
+- unique constraint;
+- state transition;
+- current workflow;
+- RBAC;
+- sign-off.
+
+## Kafka
+
+Kafka chỉ lưu và truyền event:
+
+```text
+StudyReceived
+StudyValidated
+StudyQuarantined
+InferenceRequested
+InferenceStarted
+InferenceCompleted
+InferenceFailed
+MaskCreated
+MaskRevised
+ReportDrafted
+ReportSigned
+ConsultationUpdated
+SlaTimeout
+ManualFallbackTriggered
+```
+
+## MinIO
+
+MinIO lưu file lớn:
+
+```text
+DICOM
+NIfTI
+probability map
+binary mask
+PDF report
+DICOM SR
+model weights
+backup archive
+```
+
+## Delta Lake
+
+Delta lưu lịch sử, xử lý dữ liệu, phân tích và dashboard.
+
+```text
+Bronze = raw event history
+Silver = validated clinical model
+Gold   = dashboard/analytics model
+```
+
+---
+
+# 4. MinIO thay cho Amazon S3 ở local
+
+## Bucket structure
+
+```text
+uda-raw
+uda-processed
+uda-reports
+uda-models
+uda-backups
+uda-delta
+```
+
+Layout:
+
+```text
+uda-raw/
+  dicom/
+    study_id=<study-id>/
+      series_id=<series-id>/
+        instance-000001.dcm
+
+uda-processed/
+  study_id=<study-id>/
+    dwi.nii.gz
+    adc.nii.gz
+    flair.nii.gz
+
+uda-processed/
+  study_id=<study-id>/
+    inference_id=<inference-id>/
+      probability_map.nii.gz
+      binary_mask.nii.gz
+
+uda-reports/
+  study_id=<study-id>/
+    report_version=1/
+      signed_report.pdf
+      signed_report.dcm
+
+uda-models/
+  model_id=<model-id>/
+    version=<version>/
+      weights.pt
+      metadata.json
+      checksum.sha256
+```
+
+PostgreSQL chỉ lưu:
+
+```text
+StorageID
+StudyID
+SeriesID
+FileURL
+FileType
+FileSize
+Checksum
+Location
+CreatedAt
+```
+
+Ví dụ:
+
+```text
+s3://uda-processed/study_id=abc123/dwi.nii.gz
+```
+
+Khi chạy local, URL sẽ là:
+
+```text
+http://minio:9000/uda-processed/study_id=abc123/dwi.nii.gz
+```
+
+Sau này chuyển sang AWS S3 chỉ cần đổi:
+
+```env
+OBJECT_STORAGE_PROVIDER=s3
+OBJECT_STORAGE_ENDPOINT=https://s3.ap-southeast-1.amazonaws.com
+OBJECT_STORAGE_BUCKET=uda-strokeseg-prod
+```
+
+---
+
+# 5. Docker Compose cần bổ sung
+
+Hiện tại `docker-compose.dev.yml` đã có:
+
+```text
+postgres
+kafka
+kafka-ui
+```
+
+Nên bổ sung:
+
+```yaml
+minio:
+  image: minio/minio
+  command: server /data --console-address ":9001"
+  ports:
+    - "9000:9000"
+    - "9001:9001"
+  environment:
+    MINIO_ROOT_USER: minio
+    MINIO_ROOT_PASSWORD: minio_dev_password
+  volumes:
+    - minio_data:/data
+```
+
+Có thể bổ sung thêm một init container tạo bucket:
+
+```text
+uda-raw
+uda-processed
+uda-reports
+uda-models
+uda-backups
+uda-delta
+```
+
+Sau đó architecture local sẽ chạy:
+
+```text
+PostgreSQL → localhost:5432
+Kafka      → localhost:9092
+Kafka UI   → localhost:8080
+MinIO API  → localhost:9000
+MinIO UI   → localhost:9001
+FastAPI    → localhost:8000
+React      → localhost:8443
+```
+
+---
+
+# 6. Kafka local plan
+
+## Kafka cluster
+
+Dùng Kafka KRaft hiện tại trong Docker.
+
+Không cần:
+
+- ZooKeeper;
+- Amazon MSK;
+- Confluent Cloud;
+- Upstash;
+- Kafka Connect cloud.
+
+Kafka KRaft đã đủ cho ĐACN và giữ đúng kiến trúc event-driven. Amazon MSK chỉ nên là phần mở rộng nếu sau này cần production; MSK Serverless vẫn là dịch vụ cloud có quota và chi phí, còn MSK Provisioned không phù hợp với yêu cầu 0 đồng. [AWS MSK](https://docs.aws.amazon.com/msk/latest/developerguide/)
+
+## Topic catalog
+
+Nên đổi topic hiện tại từ tên đơn giản sang domain-based topic:
+
+```text
+clinical.study.events
+clinical.series.events
+clinical.inference.events
+clinical.mask.events
+clinical.report.events
+clinical.consultation.events
+clinical.audit.events
+clinical.quarantine.events
+platform.sla.events
+platform.model.events
+```
+
+Có thể giữ alias hiện tại để không phá code:
+
+```text
+study.validated
+mask.revised
+inference.completed
+sla.timeout
+consultation.updated
+```
+
+Nhưng về lâu dài nên dùng tên domain-based.
+
+## Event format
+
+Mỗi message:
+
+```json
+{
+  "event_id": "uuid",
+  "event_type": "StudyValidated",
+  "event_version": 1,
+  "occurred_at": "2026-11-25T10:30:00Z",
+  "producer": "study-intake-service",
+  "aggregate_type": "study",
+  "aggregate_id": "study-id",
+  "correlation_id": "request-id",
+  "schema_version": "1.0.0",
+  "data": {
+    "study_id": "study-id",
+    "qc_status": "PASSED",
+    "series_count": 3,
+    "storage_prefix": "uda-raw/study_id=study-id/"
+  }
+}
+```
+
+Không đưa vào message:
+
+```text
+DICOM pixels
+patient name
+full address
+password
+access token
+model weights
+large report
+```
+
+---
+
+# 7. Bronze layer local
+
+## Bronze location
+
+Có hai lựa chọn:
+
+### Cách đơn giản nhất cho ĐACN
+
+```text
+local filesystem hoặc MinIO
+```
+
+Ví dụ:
+
+```text
+data/delta/bronze/
+data/delta/silver/
+data/delta/gold/
+```
+
+### Cách giống production hơn
+
+```text
+MinIO S3-compatible storage
+```
+
+Ví dụ:
+
+```text
+s3a://uda-delta/bronze/
+s3a://uda-delta/silver/
+s3a://uda-delta/gold/
+```
+
+Mình khuyên dùng MinIO path vì sau này migrate sang S3 dễ hơn.
+
+## Bronze tables
+
+```text
+bronze.study_events
+bronze.series_events
+bronze.inference_events
+bronze.mask_events
+bronze.report_events
+bronze.consultation_events
+bronze.audit_events
+bronze.quarantine_events
+bronze.sla_events
+bronze.model_events
+```
+
+## Bronze columns
+
+```text
+event_id
+event_type
+event_version
+occurred_at
+producer
+aggregate_type
+aggregate_id
+correlation_id
+schema_version
+payload_json
+kafka_topic
+kafka_partition
+kafka_offset
+received_at
+pipeline_run_id
+```
+
+## Bronze rule
+
+Bronze là append-only:
+
+```text
+Không update
+Không delete
+Không sửa payload cũ
+```
+
+Nếu event sai, publish event correction mới:
+
+```text
+CorrectionIssued
+RecordSuperseded
+StudyReprocessed
+```
+
+---
+
+# 8. Silver layer local
+
+Silver chuyển event thành clinical entity chuẩn hóa.
+
+## Bảng Silver
+
+```text
+silver.study
+silver.series
+silver.storage_object
+silver.inference_task
+silver.model
+silver.model_version
+silver.segmentation_mask
+silver.lesion_measurement
+silver.clinical_feedback
+silver.report
+silver.consultation
+silver.audit_event
+silver.quarantine_record
+```
+
+## Silver validation
+
+### Imaging validation
+
+```text
+DWI tồn tại
+ADC tồn tại
+FLAIR tồn tại
+modality hợp lệ
+geometry hợp lệ
+pixel spacing hợp lệ
+slice spacing hợp lệ
+checksum đúng
+```
+
+### AI validation
+
+```text
+model version tồn tại
+model đã approved
+input object tồn tại
+mask object tồn tại
+mask cùng geometry với input
+volume không âm
+inference duration hợp lệ
+```
+
+### Workflow validation
+
+```text
+RECEIVED
+→ VALIDATING
+→ VALIDATED
+→ PROCESSING
+→ AWAITING_REVIEW
+→ IN_REVIEW
+→ SIGNED_OFF
+→ COMPLETED
+```
+
+Các trạng thái lỗi:
+
+```text
+QUARANTINED
+PROCESSING_FAILED
+SLA_TIMEOUT
+MANUAL_FALLBACK
+```
+
+---
+
+# 9. Gold layer local
+
+Gold phục vụ dashboard. Không lấy trực tiếp từ PostgreSQL để tính report phức tạp.
+
+## Gold 1 — Emergency Operations
+
+```text
+gold.emergency_command_center
+```
+
+Grain:
+
+```text
+1 record / study / snapshot
+```
+
+Metrics:
+
+```text
+active_study_count
+pending_review_count
+sla_breached_count
+manual_fallback_count
+median_inference_seconds
+p95_inference_seconds
+median_review_seconds
+completed_study_count
+```
+
+## Gold 2 — Radiologist Workload
+
+```text
+gold.radiologist_workload_daily
+```
+
+Metrics:
+
+```text
+assigned_count
+completed_count
+pending_count
+median_review_time
+p95_review_time
+ai_accept_count
+ai_revise_count
+ai_reject_count
+```
+
+## Gold 3 — AI Monitoring
+
+```text
+gold.ai_model_monitoring_daily
+```
+
+Metrics:
+
+```text
+model_version
+inference_success_rate
+inference_failure_rate
+p50_latency
+p95_latency
+manual_override_rate
+mask_revision_rate
+feedback_score
+```
+
+## Gold 4 — Governance
+
+```text
+gold.audit_activity_daily
+gold.quarantine_summary
+gold.consultation_summary
+gold.model_release_summary
+```
+
+---
+
+# 10. React dashboard nên lấy dữ liệu thế nào?
+
+## Operational views
+
+React gọi FastAPI:
+
+```text
+React
+  → FastAPI
+  → PostgreSQL
+```
+
+Dùng cho:
+
+- worklist;
+- study detail;
+- sign-off;
+- consultation;
+- assignment;
+- real-time SLA;
+- mask revision;
+- notifications.
+
+## Analytics views
+
+React gọi Gold API:
+
+```text
+React
+  → FastAPI analytics endpoints
+  → Gold Delta / Parquet / DuckDB
+```
+
+Hoặc có thể chạy Streamlit local:
+
+```text
+Gold Delta
+  → DuckDB
+  → Streamlit dashboard
+```
+
+Không nên để browser kết nối trực tiếp tới Kafka, PostgreSQL hoặc MinIO bằng root credential.
+
+---
+
+# 11. DBML cần điều chỉnh gì?
+
+DBML hiện tại trong `notes/dbml` phù hợp để làm **operational PostgreSQL schema**, nhưng cần tách hai loại dữ liệu.
+
+## Giữ trong PostgreSQL
+
+```text
+User
+Role
+UserRole
+SiteSource
+Scanner
+Study
+Series
+StorageObject
+Model
+ModelVersion
+InferenceTask
+SegmentationMask
+LesionMeasurement
+ClinicalFeedback
+ConsultationSession
+ConsultationMinutes
+ConsultationMember
+Report
+```
+
+## Đưa lịch sử sang Kafka/Bronze Delta
+
+```text
+AuditLog history
+QuarantineLog history
+Reason history
+Inference status history
+Mask revision history
+Report status history
+Consultation event history
+```
+
+PostgreSQL vẫn có thể giữ current status, nhưng lịch sử append-only nên được publish sang Kafka và lưu vào Bronze.
+
+## Điểm cần sửa trong DBML
+
+### Patient JSONB
+
+Hiện tại `Study.Patient` chứa toàn bộ thông tin bệnh nhân:
+
+```text
+Patient jsonb
+```
+
+Cho prototype có thể giữ, nhưng nên đổi thành:
+
+```text
+PatientToken varchar
+PatientMetadata jsonb
+```
+
+Không lưu plaintext PHI trong data lake.
+
+### StorageObject
+
+Nên bổ sung:
+
+```text
+Checksum varchar
+MimeType varchar
+ObjectVersion varchar
+IsEncrypted boolean
+CreatedAt timestamp
+DeletedAt timestamp
+```
+
+### InferenceTask
+
+Nên bổ sung:
+
+```text
+CorrelationID uuid
+RequestedAt timestamp
+TimeoutAt timestamp
+FailureCode varchar
+InputObjectURI text
+OutputObjectURI text
+```
+
+### AuditLog
+
+Nên bổ sung:
+
+```text
+EventID uuid
+EventType varchar
+CorrelationID uuid
+SchemaVersion varchar
+HashChainValue text
+```
+
+---
+
+# 12. AI pipeline 0 đồng
+
+## Local CPU
+
+Dùng khi:
+
+- test pipeline;
+- chạy sample nhỏ;
+- test workflow;
+- không cần inference nhanh.
+
+## Google Colab/Kaggle
+
+Dùng khi:
+
+- cần GPU;
+- chạy inference batch;
+- train/finetune prototype;
+- không cần service 24/7.
+
+Flow:
+
+```text
+MinIO/S3
+  → download study
+  → preprocessing
+  → inference
+  → write mask to MinIO/S3
+  → publish InferenceCompleted to Kafka
+```
+
+AI worker không nên giữ data trong local lâu hơn cần thiết.
+
+Các file weights không commit vào Git. Chỉ lưu:
+
+```text
+model_id
+version
+checksum
+architecture
+input_modalities
+approved_status
+```
+
+---
+
+# 13. Backup 0 đồng
+
+## PostgreSQL
+
+```bash
+pg_dump uda_strokeseg > backup.sql
+```
+
+Lưu vào:
+
+```text
+uda-backups/postgres/
+```
+
+## Kafka
+
+Kafka không phải backup cuối cùng. Dùng consumer archive:
+
+```text
+Kafka
+  → Python archive worker
+  → JSON Lines
+  → MinIO uda-backups/kafka/
+```
+
+## MinIO
+
+Backup local bằng MinIO Client:
+
+```text
+mc mirror local/uda-raw backup/uda-raw
+```
+
+## Delta
+
+Delta tables đã có transaction log, nhưng vẫn nên backup:
+
+```text
+data/delta/
+  bronze/
+  silver/
+  gold/
+```
+
+---
+
+# 14. Các phase triển khai sau khi chuyển sang 0 đồng
+
+## Phase 1 — Hoàn thiện local infrastructure
+
+Mục tiêu:
+
+```text
+PostgreSQL
+Kafka
+Kafka UI
+MinIO
+FastAPI
+React
+```
+
+Việc cần làm:
+
+- thêm MinIO vào Compose;
+- tạo bucket;
+- tạo `.env.example`;
+- chuẩn hóa connection settings;
+- kiểm tra healthcheck;
+- thêm seed data;
+- kiểm tra API đọc/ghi PostgreSQL.
+
+Deliverable:
+
+```text
+docker compose up -d
+```
+
+chạy được toàn bộ core services.
+
+## Phase 2 — Chuẩn hóa Kafka
+
+- tạo topic catalog;
+- tạo event envelope;
+- tạo producer helper;
+- tạo consumer base class;
+- thêm retry;
+- thêm dead-letter;
+- thêm correlation ID;
+- thêm idempotency.
+
+Deliverable:
+
+```text
+StudyReceived
+→ StudyValidated
+→ InferenceRequested
+→ InferenceCompleted
+```
+
+## Phase 3 — Tích hợp MinIO
+
+- tạo object storage service;
+- upload file;
+- generate object key;
+- checksum;
+- download;
+- delete/retention;
+- map object URL vào `StorageObject`.
+
+Deliverable:
+
+```text
+DICOM/NIfTI/mask/report
+```
+
+được lưu ngoài PostgreSQL.
+
+## Phase 4 — Bronze Delta
+
+- đọc Kafka;
+- ghi raw events;
+- ghi metadata Kafka;
+- tạo Delta tables;
+- tạo replay job;
+- test duplicate/out-of-order event.
+
+Deliverable:
+
+```text
+data_platform/bronze/
+```
+
+## Phase 5 — Silver Delta
+
+- normalize study;
+- validate series;
+- validate inference;
+- derive SLA;
+- quarantine lỗi;
+- tạo current-state views.
+
+Deliverable:
+
+```text
+data_platform/silver/
+```
+
+## Phase 6 — Gold Dashboard
+
+- Emergency Command Center;
+- Radiologist Workload;
+- AI Monitoring;
+- Governance/Audit.
+
+Deliverable:
+
+```text
+data_platform/gold/
+```
+
+## Phase 7 — Kết nối React
+
+- `/api/v1/dashboard/emergency`;
+- `/api/v1/dashboard/workload`;
+- `/api/v1/dashboard/ai`;
+- `/api/v1/dashboard/governance`.
+
+React tiếp tục dùng PostgreSQL cho workflow và gọi Gold API cho analytics.
+
+## Phase 8 — Optional cloud migration
+
+Chỉ sau khi local system ổn định:
+
+```text
+MinIO     → S3
+Kafka     → MSK hoặc giữ Kafka self-managed
+Postgres  → RDS/Lakebase
+Local Delta → Databricks + S3
+```
+
+Không cần thay code business logic nếu các service dùng abstraction:
+
+```python
+ObjectStorage
+EventBus
+OperationalRepository
+AnalyticsRepository
+```
+
+---
+
+# 15. Cấu trúc folder nên thêm
+
+```text
+data_platform/
+├── contracts/
+│   ├── event_envelope.json
+│   ├── study_events.json
+│   ├── inference_events.json
+│   └── audit_events.json
+│
+├── bronze/
+│   ├── kafka_to_delta.py
+│   ├── schemas.py
+│   └── tables/
+│
+├── silver/
+│   ├── study_silver.py
+│   ├── inference_silver.py
+│   ├── mask_silver.py
+│   ├── quarantine.py
+│   └── current_state.py
+│
+├── gold/
+│   ├── emergency_operations.py
+│   ├── radiologist_workload.py
+│   ├── ai_monitoring.py
+│   └── governance.py
+│
+├── storage/
+│   ├── minio_client.py
+│   ├── object_keys.py
+│   └── checksum.py
+│
+└── monitoring/
+    ├── pipeline_metrics.py
+    ├── kafka_lag.py
+    └── data_quality.py
+```
+
+---
+
+# 16. Stack cuối cùng cho ĐACN
+
+Mình chốt stack như sau:
+
+```text
+Frontend:
+React + Vite
+
+Backend:
+FastAPI
+
+Operational database:
+PostgreSQL Docker
+
+Event backbone:
+Apache Kafka KRaft Docker
+
+Object storage:
+MinIO Docker
+
+Data lake:
+Delta Lake local
+
+Processing:
+PySpark + delta-spark
+
+Analytics:
+DuckDB hoặc PySpark đọc Gold
+
+AI:
+local CPU / Google Colab / Kaggle
+
+Deployment:
+Docker Compose
+
+Optional future cloud:
+S3 + MSK + RDS/Lakebase + Databricks
+```
+
+## Không dùng trong phiên bản 0 đồng
+
+```text
+Amazon MSK Provisioned
+Amazon RDS production
+Databricks paid workspace
+AWS NAT Gateway
+ECS/EC2 production
+GPU EC2
+SSE-KMS trả phí
+```
+
+## Có thể dùng sau này nhưng không bắt buộc
+
+```text
+Amazon S3
+MSK Serverless
+RDS Free Tier
+Supabase Free
+Neon Free
+Databricks Free Edition
+Vercel Free
+Render Free
+```
+
+Nhưng các free cloud services thường có quota, sleep hoặc thay đổi pricing. Vì vậy bản demo chắc chắn nhất vẫn là:
+
+```text
+Docker PostgreSQL
++ Docker Kafka
++ Docker MinIO
++ local Delta Lake
++ FastAPI
++ React
+```
+
+Đây là phương án vừa giữ đúng system architecture trong sơ đồ, vừa có Kafka, vừa có Bronze/Silver/Gold, vừa không phải trả tiền.

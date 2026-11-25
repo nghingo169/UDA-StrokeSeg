@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from app.api.deps import CurrentUser, get_current_user
-from app.demo_store import store
+from app.db import state as store
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 

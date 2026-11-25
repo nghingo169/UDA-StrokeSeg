@@ -77,6 +77,38 @@ Vite proxies `/api` (+ WebSocket) → `http://127.0.0.1:8000`.
 
 ---
 
+## Deploy frontend to Vercel
+
+The existing Vercel project now hosts both the Vite SPA and the FastAPI API as a Python Function. PostgreSQL still has to be an external managed database because Vercel does not provide a persistent local database volume. Kafka is optional for this demo deployment; the current event publisher records request events without requiring a broker.
+
+The existing Vercel project is already connected to this repository and deploys from `main`. Keep that project; the committed [vercel.json](./vercel.json) uses `npm ci`, runs `npm run build`, and publishes `apps/web/dist` when the Vercel Root Directory is the repository root.
+
+For the real PostgreSQL-backed backend, configure these Vercel environment variables for **Production**:
+
+```env
+UDA_DEMO_MODE=false
+UDA_DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require
+UDA_CORS_ORIGINS=["https://uda-strokeseg.vercel.app"]
+UDA_DEMO_PASSWORD=Pass@123
+VITE_DEMO_MODE=false
+```
+
+Leave `VITE_API_BASE_URL` empty so the browser calls the same Vercel origin at `/api/v1`. If the API is later moved to another host, set:
+
+```env
+VITE_DEMO_MODE=true
+VITE_DEMO_PASSWORD=Pass@123
+VITE_API_BASE_URL=https://your-api.example.com
+```
+
+`VITE_API_BASE_URL` is the backend origin only; do not append `/api/v1`. Configure the backend CORS allow-list to include the Vercel domain.
+
+Before the first real deployment, create the PostgreSQL schema and run the synthetic seed from [005_seed_demo_data.sql](./ops/docker/postgres/init/005_seed_demo_data.sql) against the managed database. The Vercel Function is stateless and cannot run the local Docker Compose PostgreSQL volume.
+
+Production is deployed automatically by the existing Vercel Git Integration when `main` is updated. The GitHub Actions [cd-production.yml](./.github/workflows/cd-production.yml) workflow is manual-only, for cases where you explicitly want a Vercel CLI deploy; it requires `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID`. Preview deployment is manual through [cd-staging.yml](./.github/workflows/cd-staging.yml).
+
+---
+
 ## Command cheat sheet
 
 ### Root (`package.json`)

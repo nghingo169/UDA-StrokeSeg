@@ -1,4 +1,6 @@
 from app.demo_store import store
+from app.core.config import settings
+from app.db import domain
 from app.services.event_publisher import publish
 
 
@@ -23,5 +25,7 @@ def intake_study(accession: str, series: list[str], actor: str) -> dict:
         return {"status": "quarantined", "item": quarantined}
 
     publish("StudyValidated", {"accession": accession, "series": series})
+    if not settings.demo_mode:
+        domain.create_study(accession, series, actor)
     store.audit("INTAKE_OK", actor, accession)
     return {"status": "validated", "accession": accession, "series": series}

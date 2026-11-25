@@ -1,0 +1,264 @@
+Project UDA_StrokeSeg {
+  database_type: 'PostgreSQL'
+  Note: 'Automated System for Acute Ischemic Stroke Lesion Segmentation on Multi-Center MRI'
+}
+
+// ==========================================
+// 1. User, Role & Access Control
+// ==========================================
+
+Table Role {
+  RoleID uuid [pk]
+  RoleName varchar [not null, unique]
+  AccessLevel int [not null]
+  Permission jsonb
+}
+
+Table User {
+  UserID uuid [pk]
+  Username varchar [not null, unique]
+  Email varchar [not null, unique]
+  FullName varchar [not null]
+  Department varchar
+  Organization varchar
+  IsActive boolean [default: true]
+}
+
+// Bảng trung gian cho quan hệ M:N (Belongs_to) giữa User và Role
+Table UserRole {
+  UserID uuid [pk, ref: > User.UserID]
+  RoleID uuid [pk, ref: > Role.RoleID]
+}
+
+// ==========================================
+// 2. Imaging Acquisition & Storage
+// ==========================================
+
+Table SiteSource {
+  SiteID uuid [pk]
+  SiteCode varchar [not null, unique]
+  SiteName varchar [not null]
+  SiteType varchar
+  Description text
+  Timezone varchar
+}
+
+Table Scanner {
+  ScannerID uuid [pk]
+  SiteID uuid [not null, ref: > SiteSource.SiteID] // Has (1:N)
+  ModelName varchar [not null]
+  Vendor varchar
+  FieldStrength float
+  ProtocolConfig jsonb
+}
+
+Table Study {
+  StudyID uuid [pk]
+  ScannerID uuid [not null, ref: > Scanner.ScannerID] // Acquires (1:N)
+  PrimaryDoctorID uuid [null, ref: > User.UserID] // Responsible_for (0..N)
+  AccessionNo varchar [unique]
+  Patient jsonb [not null, note: 'Thông tin hành chính bệnh nhân (Họ tên, DOB, giới tính, địa chỉ, số hồ sơ, khoa/phòng/giường, thời gian nhập viện)']
+  ClinicalDiagnosis text
+  StrokeType varchar
+  AcquiredAt timestamp
+  SymptomOnsetTime timestamp
+  TimeFromOnset_Hours float
+  BaselineNIHSS int
+  PreStroke_mRS int
+  QCStatus varchar
+  QCDetails text
+}
+
+Table Series {
+  SeriesID uuid [pk]
+  StudyID uuid [not null, ref: > Study.StudyID] // Contains (1:N)
+  PreprocessedStorageID uuid [null, ref: > StorageObject.StorageID]
+  SeriesNumber int
+  SequenceType varchar
+  SliceThickness float
+  PixelSpacing varchar
+  RepetitionTime_TR float
+  EchoTime_TE float
+  AffineMatrix jsonb
+}
+
+Table StorageObject {
+  StorageID uuid [pk]
+  SeriesID uuid [not null, unique, ref: - Series.SeriesID] // Stored_in (1:1)
+  FileURL text [not null]
+  FileType varchar
+  FileSize bigint
+  VoxelSpacing varchar
+  Location varchar
+}
+
+// ==========================================
+// 3. Quality Control & Audit
+// ==========================================
+
+// Thực thể yếu phụ thuộc Study qua quan hệ Logged_in (1:N)
+Table QuarantineLog {
+  StudyID uuid [pk, ref: > Study.StudyID]
+  LogNumber int [pk]
+  QuarantineAt timestamp [not null]
+  ResolvedAt timestamp
+  QCDetails text
+}
+
+Table Reason {
+  ReasonID uuid [pk]
+  StudyID uuid [not null]
+  LogNumber int [not null]
+  Type varchar [not null]
+}
+
+Ref: Reason.(StudyID, LogNumber) > QuarantineLog.(StudyID, LogNumber) // Has (1:N)
+
+Table AuditLog {
+  LogID uuid [pk]
+  StudyID uuid [null, ref: > Study.StudyID] // Logs (0..N)
+  UserID uuid [null, ref: > User.UserID]
+  Action varchar [not null]
+  Timestamp timestamp [not null]
+  Device varchar
+  IP varchar
+  PayloadSnapshot jsonb
+}
+
+// ==========================================
+// 4. AI Model, Domain Adaptation & Inference
+// ==========================================
+
+Table Model {
+  ModelID uuid [pk]
+  ModelName varchar [not null, unique]
+  ModelDescription text
+}
+
+Table ModelVersion {
+  VersionID uuid [pk]
+  ModelID uuid [not null, ref: > Model.ModelID] // Has_version (1:N)
+  VersionTag varchar [not null]
+  Architecture varchar
+  InputModalities varchar
+  Hyperparameters jsonb
+  DeploymentStatus varchar
+  DeployedAt timestamp
+}
+
+Table DomainAdaptationRun {
+  RunID uuid [pk]
+  SourceVersionID uuid [not null, ref: > ModelVersion.VersionID] // Is_source_for (1:N)
+  TargetVersionID uuid [not null, ref: > ModelVersion.VersionID] // Is_target_for (1:N)
+  Method varchar [not null]
+  BaselineTargetDice float
+  AdaptedTargetDice float
+  ValidationMetrics jsonb
+  AdaptedAt timestamp
+}
+
+Table InferenceTask {
+  TaskID uuid [pk]
+  StudyID uuid [not null, ref: > Study.StudyID] // Runs_on (1:N)
+  VersionID uuid [not null, ref: > ModelVersion.VersionID] // Is_used_for (1:N)
+  TriggeredBy uuid [null, ref: > User.UserID]
+  ExecutionStatus varchar [not null]
+  ExecutionQueue varchar
+  ExecutionTime float
+  StartedAt timestamp
+  CompletedAt timestamp
+  ErrorMessage text
+}
+
+// ==========================================
+// 5. Segmentation Mask & Lesion Measurement
+// ==========================================
+
+Table SegmentationMask {
+  MaskID uuid [pk]
+  StudyID uuid [not null, ref: > Study.StudyID] // Belongs_to (1:N)
+  TaskID uuid [null, ref: > InferenceTask.TaskID] // Produced_by (0..N)
+  VersionID uuid [null, ref: > ModelVersion.VersionID]
+  ParentMaskID uuid [null, ref: > SegmentationMask.MaskID] // Revises (0..N đệ quy)
+  CreatedBy uuid [null, ref: > User.UserID]
+  MaskType varchar [not null]
+  ApprovalStatus varchar
+  DiceScore float
+  CreatedAt timestamp [not null]
+}
+
+// Thực thể yếu phụ thuộc SegmentationMask qua quan hệ Measured_from (1:N)
+Table LesionMeasurement {
+  MaskID uuid [pk, ref: > SegmentationMask.MaskID]
+  MeasurementNo int [pk]
+  LesionVolume float
+  Diameter float
+  SurfaceArea float
+  ClusterCount int
+  Position varchar
+  Laterality varchar
+  VascularTerritory varchar
+  SeverityGrade varchar
+}
+
+// ==========================================
+// 6. Clinical Feedback, Consultation & Report
+// ==========================================
+
+Table ClinicalFeedback {
+  FeedbackID uuid [pk]
+  UserID uuid [not null, ref: > User.UserID] // Given_by (1:N)
+  MaskID uuid [not null, ref: > SegmentationMask.MaskID] // About_mask (1:N)
+  ClinicalUtilityRating int
+  TreatmentDecision varchar
+  Comments text
+  CreatedAt timestamp [not null]
+}
+
+Table ConsultationSession {
+  ConsultationID uuid [pk]
+  StudyID uuid [not null, ref: > Study.StudyID] // For_study (1:N)
+  ConsensusMaskID uuid [null, ref: > SegmentationMask.MaskID] // Consensus (0..N)
+  TriggerReason text
+  ConsultationScope varchar
+  ConsensusNotes text
+  Status varchar [not null]
+  FinalizedAt timestamp
+}
+
+// Thực thể 1:1 với ConsultationSession lưu thông tin biên bản hội chẩn
+Table ConsultationMinutes {
+  MinutesID uuid [pk]
+  ConsultationID uuid [not null, unique, ref: - ConsultationSession.ConsultationID] // Quan hệ 1:1
+  Scope varchar
+  Mode varchar
+  ScheduledAt timestamp
+  Location varchar
+  ConsultationRequest text
+  RecipientUnit varchar
+  HospitalRepOpinion text
+}
+
+// Thực thể yếu phụ thuộc ConsultationSession qua quan hệ Member_of (1:N)
+Table ConsultationMember {
+  ConsultationID uuid [pk, ref: > ConsultationSession.ConsultationID]
+  MemberID uuid [pk]
+  UserID uuid [not null, ref: > User.UserID] // Belongs_to (1:N)
+  IndividualMaskID uuid [null, ref: > SegmentationMask.MaskID]
+  RoleInSession varchar [not null, note: 'Chair | Secretary | Member']
+  AgreementWithAI boolean
+  Comments text
+  SubmittedAt timestamp
+  DigitalSignature text
+  SignedAt timestamp
+}
+
+Table Report {
+  ReportID uuid [pk]
+  StudyID uuid [not null, ref: > Study.StudyID] // Reports (1:N)
+  ApprovedMaskID uuid [null, ref: > SegmentationMask.MaskID] // Approves (0..N)
+  SignedByUserID uuid [null, ref: > User.UserID] // Signed_by (0..N)
+  ReportVersion varchar [not null]
+  SignedBy varchar
+  GeneratedAt timestamp [not null]
+}

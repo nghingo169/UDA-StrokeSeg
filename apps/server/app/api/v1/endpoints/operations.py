@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends
 
 from app.api.deps import CurrentUser, require_roles
-from app.demo_store import store
+from app.db import state as store
+from app.core.config import settings
 from app.schemas.telemetry_schema import SuspendRequest
 from app.services import storage_service
 from app.services.event_publisher import publish, recent
@@ -14,7 +15,7 @@ def health():
     snap = store.snapshot()
     return {
         "status": "ok",
-        "demo_mode": True,
+        "demo_mode": settings.demo_mode,
         "ai_active": snap["ops"]["ai_active"],
         "components": snap["ops"]["health"],
         "processing": snap["processing"],

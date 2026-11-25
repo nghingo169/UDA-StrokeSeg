@@ -9,6 +9,8 @@ import {
 } from "react";
 import {
   ensureDemoSession,
+  loginApi,
+  loginDemoApi,
   pingDemoApi,
   reassignFallback,
   saveClinicalNote,
@@ -4679,17 +4681,33 @@ function AuthViews({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [pickRole, setPickRole] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
-  const startSso = () => {
+  const startSso = async () => {
     setError("");
-    if (SSO_START_URL) {
+    if (SSO_START_URL && !username.trim() && !password) {
       setBusy(true);
       window.location.assign(SSO_START_URL);
       return;
     }
-    if (DEMO_MODE) {
-      setPickRole(true);
+    if (username.trim() || password) {
+      setBusy(true);
+      try {
+        const result = await loginApi(username.trim(), password);
+        onLogin(result.role as Role);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "Sign-in failed. Contact your administrator.");
+      } finally {
+        setBusy(false);
+      }
       return;
+    }
+    if (DEMO_MODE) {
+      if (!username.trim() && !password) {
+        setPickRole(true);
+        return;
+      }
     }
     // Generic message on purpose: never reveal whether an account exists.
     setError("Sign-in is unavailable right now. Contact your administrator.");
@@ -4727,8 +4745,8 @@ function AuthViews({
         <section className="auth-form-panel" aria-labelledby="signin-title">
           <div className="auth-form">
             <div className="signin-heading"><div className="signin-icon"><Icon name="brain" size={24} /></div><div><h2 id="signin-title">Sign in</h2><p>Use the account issued by your hospital IT Admin</p></div></div>
-            <label className="form-label">Username<input type="text" placeholder="your.username" autoComplete="username" /></label>
-            <label className="form-label">Password<input type="password" placeholder="••••••••" autoComplete="current-password" /></label>
+            <label className="form-label">Username<input type="text" placeholder="your.username" autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} /></label>
+            <label className="form-label">Password<input type="password" placeholder="••••••••" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
           {screen === "expired" && (
             <div className="auth-notice warning" role="alert">
               <span className="chip warning">
@@ -4762,7 +4780,23 @@ function AuthViews({
               <span className="section-kicker">Prototype: role returned by HRM</span>
               <div>
                 {(Object.keys(roles) as Role[]).map((item) => (
-                  <button key={item} type="button" onClick={() => onLogin(item)}>
+                  <button
+                    key={item}
+                    type="button"
+                    disabled={busy}
+                    onClick={async () => {
+                      setBusy(true);
+                      setError("");
+                      try {
+                        await loginDemoApi(item);
+                        onLogin(item);
+                      } catch (cause) {
+                        setError(cause instanceof Error ? cause.message : "Backend sign-in failed.");
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
                     {roles[item].label}
                   </button>
                 ))}

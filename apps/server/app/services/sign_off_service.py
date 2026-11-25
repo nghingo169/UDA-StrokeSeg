@@ -2,6 +2,8 @@ from fastapi import HTTPException, status
 
 from app.core.security import verify_demo_password
 from app.demo_store import store
+from app.core.config import settings
+from app.db import domain
 from app.services.event_publisher import publish
 
 
@@ -13,6 +15,17 @@ def sign_off(study_id: str, payload: dict, actor: str, display_name: str) -> dic
         raise HTTPException(status_code=400, detail="Clinical note required")
     if payload.get("disposition") == "not_used" and not payload.get("disposition_note", "").strip():
         raise HTTPException(status_code=400, detail="Reason required when suggestion is not used")
+
+    if not settings.demo_mode:
+        study = domain.get_study(study_id)
+        if not study:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Study not in worklist")
+        signed = {**study, "case_state": "SignedOff", "signed": "now", "signer": display_name, "treatment": "Decision pending", "disposition": payload["disposition"], "disposition_note": payload.get("disposition_note", ""), "clinical_note": payload["clinical_note"], "perceived_quality": payload["perceived_quality"], "clinical_utility": payload["clinical_utility"], "report_version": "RPT-01"}
+        domain.update_study(study_id, status="SignedOff", clinical=signed)
+        domain.save_report(study_id, status="SIGNED", content=signed, signer=display_name)
+        publish("StudySignedOff", {"study_id": study_id, "actor": actor})
+        store.audit("SIGN_OFF", actor, study_id)
+        return signed
 
     def write(state):
         idx = next((i for i, s in enumerate(state["studies"]) if s["id"] == study_id), None)

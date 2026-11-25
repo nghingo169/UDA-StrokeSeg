@@ -1,0 +1,67 @@
+warning: in the working copy of '.github/workflows/cd-production.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.github/workflows/cd-staging.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.github/workflows/ci-ai-pipeline.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.github/workflows/ci-server.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.github/workflows/ci-web.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/api/deps.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/api/v1/endpoints/consultations.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/api/v1/endpoints/feedback.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/api/v1/endpoints/governance.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/api/v1/endpoints/model_registry.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/api/v1/endpoints/notifications.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/api/v1/endpoints/operations.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/api/v1/endpoints/pacs.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/api/v1/endpoints/quarantine.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/core/config.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/demo_store.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/services/audit_service.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/services/auth_service.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/services/mask_service.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/services/sign_off_service.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/services/study_intake_service.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/services/study_service.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/app/services/user_service.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/web/src/App.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/web/src/vite-env.d.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ops/docker/docker-compose.dev.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ops/docker/env.example', LF will be replaced by CRLF the next time Git touches it
+ .github/workflows/cd-production.yml                | 28 [32m+++++++++[m[31m---[m
+ .github/workflows/cd-staging.yml                   | 25 [32m++++++++[m[31m---[m
+ .github/workflows/ci-ai-pipeline.yml               | 18 [32m+++++[m[31m---[m
+ .github/workflows/ci-server.yml                    | 31 [32m++++++++++[m[31m---[m
+ .github/workflows/ci-web.yml                       | 28 [32m+++++++++[m[31m---[m
+ .github/workflows/deploy.yml                       |  5 [32m+[m[31m--[m
+ .gitignore                                         |  6 [32m+++[m
+ README.md                                          | 32 [32m+++++++++++++[m
+ apps/server/app/api/deps.py                        |  4 [32m++[m
+ apps/server/app/api/v1/endpoints/consultations.py  |  2 [32m+[m[31m-[m
+ apps/server/app/api/v1/endpoints/feedback.py       |  2 [32m+[m[31m-[m
+ apps/server/app/api/v1/endpoints/governance.py     |  2 [32m+[m[31m-[m
+ apps/server/app/api/v1/endpoints/model_registry.py |  2 [32m+[m[31m-[m
+ apps/server/app/api/v1/endpoints/notifications.py  |  2 [32m+[m[31m-[m
+ apps/server/app/api/v1/endpoints/operations.py     |  5 [32m++[m[31m-[m
+ apps/server/app/api/v1/endpoints/pacs.py           |  2 [32m+[m[31m-[m
+ apps/server/app/api/v1/endpoints/quarantine.py     |  2 [32m+[m[31m-[m
+ apps/server/app/core/config.py                     |  6 [32m++[m[31m-[m
+ apps/server/app/db/session.py                      | 20 [32m+++++++[m[31m--[m
+ apps/server/app/demo_store.py                      | 44 [32m++++++++++++++++++[m
+ apps/server/app/main.py                            |  9 [32m++[m[31m--[m
+ apps/server/app/services/audit_service.py          |  4 [32m++[m
+ apps/server/app/services/auth_service.py           | 13 [32m++++++[m
+ apps/server/app/services/mask_service.py           | 17 [32m+++++++[m
+ apps/server/app/services/report_service.py         | 13 [32m++++++[m
+ apps/server/app/services/sign_off_service.py       | 13 [32m++++++[m
+ apps/server/app/services/study_intake_service.py   |  4 [32m++[m
+ apps/server/app/services/study_service.py          | 25 [32m+++++++++++[m
+ apps/server/app/services/user_service.py           |  6 [32m+++[m
+ apps/server/requirements.txt                       |  4 [32m++[m
+ apps/web/src/App.tsx                               | 48 [32m+++++++++++++++++[m[31m---[m
+ apps/web/src/services/demoApi.ts                   | 34 [32m+++++++[m[31m-------[m
+ apps/web/src/services/websocketService.ts          |  6 [32m++[m[31m-[m
+ apps/web/src/vite-env.d.ts                         |  1 [32m+[m
+ notes/diagram/[UDA-StrokeSeg] ERD.png              |  4 [32m+[m[31m-[m
+ ops/docker/docker-compose.dev.yml                  | 52 [32m++++++++++++++++++++[m[31m--[m
+ ops/docker/env.example                             |  6 [32m++[m[31m-[m
+ 37 files changed, 445 insertions(+), 80 deletions(-)

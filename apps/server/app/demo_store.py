@@ -10,6 +10,12 @@ from datetime import datetime, timezone
 from threading import Lock
 from typing import Any
 
+from sqlalchemy import text
+
+from app.core.config import settings
+from app.db.session import SessionLocal
+from app.db.domain import sync_consultations
+
 DEMO_PASSWORD = "Pass@123"
 
 
@@ -612,19 +618,45 @@ class DemoStore:
         self._state = _seed()
 
     def snapshot(self) -> dict[str, Any]:
+        if not settings.demo_mode:
+            return self._db_snapshot()
         with self._lock:
             return deepcopy(self._state)
 
     def reset(self) -> dict[str, Any]:
+        if not settings.demo_mode:
+            state = _seed()
+            with SessionLocal.begin() as db:
+                db.execute(
+                    text("""INSERT INTO app_state(state_key, state) VALUES ('demo', CAST(:state AS jsonb))
+                    ON CONFLICT (state_key) DO UPDATE SET state = EXCLUDED.state, updated_at = now()"""),
+                    {"state": __import__("json").dumps(state)},
+                )
+            return deepcopy(state)
         with self._lock:
             self._state = _seed()
             return deepcopy(self._state)
 
     def mutate(self, fn) -> Any:
+        if not settings.demo_mode:
+            with SessionLocal.begin() as db:
+                row = db.execute(text("SELECT state FROM app_state WHERE state_key = 'demo' FOR UPDATE")).scalar_one_or_none()
+                state = row or _seed()
+                result = fn(state)
+                sync_consultations(db, state.get("Consultation", []))
+                db.execute(
+                    text("UPDATE app_state SET state = CAST(:state AS jsonb), updated_at = now() WHERE state_key = 'demo'"),
+                    {"state": __import__("json").dumps(state)},
+                )
+                return result
         with self._lock:
             return fn(self._state)
 
     def audit(self, event: str, actor: str, resource: str, result: str = "OK") -> None:
+        if not settings.demo_mode:
+            from app.db.domain import write_audit
+            write_audit(event, actor, resource, result)
+            return
         with self._lock:
             self._state["audit"].insert(
                 0,
@@ -636,6 +668,18 @@ class DemoStore:
                     "result": result,
                 },
             )
+
+    def _db_snapshot(self) -> dict[str, Any]:
+        with SessionLocal.begin() as db:
+            row = db.execute(text("SELECT state FROM app_state WHERE state_key = 'demo' FOR UPDATE")).scalar_one_or_none()
+            if row is None:
+                state = _seed()
+                db.execute(
+                    text("INSERT INTO app_state(state_key, state) VALUES ('demo', CAST(:state AS jsonb))"),
+                    {"state": __import__("json").dumps(state)},
+                )
+                return deepcopy(state)
+            return deepcopy(row)
 
 
 store = DemoStore()

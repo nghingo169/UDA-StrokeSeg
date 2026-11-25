@@ -1,12 +1,20 @@
-﻿# TODO(UDA-StrokeSeg): scaffold - implement per notes/repo_structure.md
-
 name: ci-ai-pipeline
+
 on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    paths:
+      - 'apps/ai_pipeline/**'
+      - '.github/workflows/ci-ai-pipeline.yml'
   workflow_dispatch:
+
 jobs:
-  stub:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo "TODO implement ci-ai-pipeline"
-
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m compileall -q apps/ai_pipeline

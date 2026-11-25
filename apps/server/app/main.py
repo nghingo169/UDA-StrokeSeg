@@ -1,4 +1,4 @@
-"""FastAPI entrypoint - in-memory demo backend for lecturer walkthroughs."""
+"""FastAPI entrypoint for local and Vercel deployments."""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,9 +12,8 @@ app = FastAPI(
     title=settings.app_name,
     version="0.1.0-demo",
     description=(
-        "Dummy/in-memory API Gateway for UDA-StrokeSeg lecturer demos. "
-        "Password for all demo users: **Pass@123**. "
-        "Open `/docs` for interactive Swagger."
+        "UDA-StrokeSeg API Gateway. Configure UDA_DEMO_MODE=false for the "
+        "PostgreSQL-backed HRM directory. Open `/docs` for Swagger."
     ),
 )
 
@@ -35,7 +34,7 @@ def root():
         "service": settings.app_name,
         "docs": "/docs",
         "health": f"{settings.api_prefix}/operations/health",
-        "demo_password": "Pass@123",
+        "mode": "demo" if settings.demo_mode else "database",
         "hint": "POST /api/v1/auth/login with {username, password, role}",
     }
 

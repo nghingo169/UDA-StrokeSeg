@@ -24,6 +24,11 @@ __pycache__/
 venv/
 *.egg-info/
 
+*.data/
+
+# Synthetic PACS study data
+/ops/pacs-simulator/sample_studies/
+
 # AI weights cache - never commit binaries (fetch via apps/ai_pipeline/scripts/fetch_weights.py)
 apps/ai_pipeline/weights/**
 !apps/ai_pipeline/weights/.gitkeep
@@ -37,6 +42,7 @@ apps/ai_pipeline/weights/**
 # DVC / local secrets
 .dvc/cache/
 ops/docker/.env
+.vercel/
 
 # Platform-managed agentplat state, not project source.
 /.plugins/

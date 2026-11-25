@@ -23,7 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSo
 from app.api.deps import CurrentUser, get_current_user
 from app.core.config import settings
 from app.core.security import parse_token, verify_demo_password
-from app.demo_store import store
+from app.db import state as store
 from app.models.consultation import RoleInSession, empty_member, empty_session
 from app.schemas.consultation_schema import (
     AgreementRequest,

@@ -2,6 +2,8 @@ from fastapi import HTTPException, status
 
 from app.core.security import issue_token, verify_demo_password
 from app.demo_store import store
+from app.core.config import settings
+from app.db import domain
 
 
 def hrm_status() -> dict:
@@ -24,6 +26,17 @@ def sync_hrm() -> dict:
 
 def login(username: str, password: str, role: str | None = None) -> dict:
     verify_demo_password(password)
+
+    if not settings.demo_mode:
+        user = domain.find_user(username, role)
+        if not user and role:
+            user = next((item for item in domain.list_users() if item["role"] == role), None)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unknown user")
+        token = issue_token(user["role"], user["username"])
+        domain.write_audit("LOGIN", user["username"], user["role"])
+        return {"access_token": token, "token_type": "bearer", "role": user["role"],
+                "user": {**user, "identity_source": "hospital-hrm", "account_provisioned_locally": False}}
 
     def find(state):
         matches = [u for u in state["users"] if u["username"] == username]

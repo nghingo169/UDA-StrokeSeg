@@ -4,8 +4,10 @@ export type ConsultationWsHandler = (event: string, payload: Record<string, unkn
 
 export function consultationWsUrl(consultationId: string): string {
   const token = getDemoToken() || "";
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/api/v1/consultation/${consultationId}/ws?token=${encodeURIComponent(token)}`;
+  const configuredApi = String(import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+  const apiUrl = configuredApi ? new URL(configuredApi) : new URL(window.location.origin);
+  const protocol = apiUrl.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${apiUrl.host}${apiUrl.pathname.replace(/\/$/, "")}/api/v1/consultation/${consultationId}/ws?token=${encodeURIComponent(token)}`;
 }
 
 export function connectConsultationRoom(

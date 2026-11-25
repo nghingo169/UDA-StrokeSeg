@@ -1,10 +1,17 @@
 from fastapi import HTTPException, status
 
 from app.demo_store import store
+from app.core.config import settings
+from app.db import domain
 from app.services.event_publisher import publish
 
 
 def get_mask(study_id: str) -> dict:
+    if not settings.demo_mode:
+        study = domain.get_study(study_id)
+        if not study:
+            raise HTTPException(status_code=404, detail="Study not found")
+        return {"study_id": study_id, "version": study.get("mask_version", "System draft 01"), "revised": study.get("mask_version") != "System draft 01", "volume_ml": study.get("volume", 0), "revision_reason": study.get("mask_revision_reason")}
     masks = store.snapshot()["masks"]
     if study_id in masks:
         return masks[study_id]
@@ -21,6 +28,16 @@ def get_mask(study_id: str) -> dict:
 
 
 def revise_mask(study_id: str, tool: str, reason: str, volume_ml: float | None, actor: str) -> dict:
+    if not settings.demo_mode:
+        study = domain.get_study(study_id)
+        if not study:
+            raise HTTPException(status_code=404, detail="Study not found")
+        new_volume = volume_ml if volume_ml is not None else round(float(study.get("volume", 0)) + 0.7, 1)
+        mask = {"study_id": study_id, "version": "Revision 02", "revised": True, "volume_ml": new_volume, "revision_reason": reason or f"Edited with {tool}", "tool": tool}
+        domain.update_study(study_id, clinical={"volume": new_volume, "mask_version": "Revision 02", "mask_revision_reason": mask["revision_reason"], "progress": "in_progress"})
+        publish("MaskRevised", {"study_id": study_id, "actor": actor})
+        store.audit("MASK_REVISED", actor, study_id)
+        return mask
     def write(state):
         study = next((s for s in state["studies"] if s["id"] == study_id), None)
         if not study:

@@ -1,14 +1,16 @@
-"""App settings for the lecturer demo API (in-memory, no external DB)."""
+"""Application settings."""
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="UDA_", env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="UDA_", env_file=(".env", "apps/server/.env"), extra="ignore")
 
     app_name: str = "UDA-StrokeSeg Demo API"
     api_prefix: str = "/api/v1"
     demo_mode: bool = True
+    database_url: str = "postgresql+psycopg://uda:uda_dev_password@localhost:5432/uda_strokeseg"
+    kafka_bootstrap_servers: str = "localhost:9092"
     demo_password: str = "Pass@123"
     cors_origins: list[str] = [
         "http://localhost:8443",

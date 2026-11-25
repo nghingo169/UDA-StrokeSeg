@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from app.api.deps import CurrentUser, require_roles
-from app.demo_store import store
+from app.db import state as store
 from app.schemas.model_schema import ClinicalGateRequest
 
 router = APIRouter(prefix="/model-registry", tags=["model-registry"])

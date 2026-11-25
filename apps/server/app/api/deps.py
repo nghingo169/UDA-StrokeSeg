@@ -8,6 +8,8 @@ from fastapi import Depends, Header, HTTPException, status
 
 from app.core.security import parse_token
 from app.demo_store import store
+from app.core.config import settings
+from app.db import domain
 
 
 class CurrentUser(dict):
@@ -25,6 +27,8 @@ class CurrentUser(dict):
 
 
 def _find_user(role: str, username: str) -> dict | None:
+    if not settings.demo_mode:
+        return domain.find_user(username, role)
     def find(state):
         for user in state["users"]:
             if user["username"] == username and user["role"] == role:

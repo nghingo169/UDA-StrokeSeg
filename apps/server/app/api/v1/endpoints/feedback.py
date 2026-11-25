@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import CurrentUser, require_roles
-from app.demo_store import store
+from app.db import state as store
 from app.schemas.clinical_schema import ClinicalFeedbackRequest, TreatmentPlanRequest
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
