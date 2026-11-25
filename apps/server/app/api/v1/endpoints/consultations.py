@@ -62,6 +62,10 @@ def _now() -> str:
 def _public_session(item: dict[str, Any]) -> dict[str, Any]:
     """Hide the host ZAK, start URL, and meeting password from list/detail payloads."""
     out = dict(item)
+    # Keep the demo/live integration state explicit for the UI and API tests.
+    # The value is stored on the session when the meeting is created; the
+    # fallback keeps older seeded sessions compatible with demo mode.
+    out["zoom_mock"] = bool(item.get("zoom_mock", settings.demo_mode))
     for key in _PRIVATE_ZOOM:
         out.pop(key, None)
     return out
@@ -220,7 +224,7 @@ def _host_zak(session: dict[str, Any]) -> str | None:
 
 
 def _zoom_for(session: dict[str, Any], user: CurrentUser, role: int) -> dict[str, Any]:
-    return join_payload(
+    payload = join_payload(
         meeting_number=session.get("zoom_meeting_number") or "0",
         password=session.get("zoom_password") or "",
         display_name=user.display_name,
@@ -229,6 +233,8 @@ def _zoom_for(session: dict[str, Any], user: CurrentUser, role: int) -> dict[str
         staff_id=_staff_id(user),
         zak=_host_zak(session) if role == 1 else None,
     )
+    payload["mock"] = bool(session.get("zoom_mock", settings.demo_mode))
+    return payload
 
 
 def _record_attendance(session: dict[str, Any], user: CurrentUser, zoom_role: str) -> None:
@@ -416,6 +422,7 @@ def create_consultation(
         )
         session["created_at"] = _now()
         meeting = create_meeting(topic=f"UDA-StrokeSeg consultation {consultation_id} · {body.study_id}")
+        session["zoom_mock"] = bool(meeting.get("mock", settings.demo_mode))
         session["zoom_meeting_number"] = str(meeting["id"])
         session["zoom_password"] = meeting.get("password") or ""
         session["zoom_zak"] = meeting.get("zak")
