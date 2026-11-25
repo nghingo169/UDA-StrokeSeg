@@ -10,9 +10,14 @@ from sqlalchemy import text
 from app.db.domain import sync_consultations, write_audit
 from app.db.session import SessionLocal
 from app.demo_store import _seed
+from app.core.config import settings
 
 
 def snapshot() -> dict[str, Any]:
+    if settings.demo_mode:
+        from app.demo_store import store as demo_store
+
+        return demo_store.snapshot()
     with SessionLocal.begin() as db:
         row = db.execute(text("SELECT state FROM app_state WHERE state_key = 'demo' FOR UPDATE")).scalar_one_or_none()
         if row is None:
@@ -23,6 +28,10 @@ def snapshot() -> dict[str, Any]:
 
 
 def mutate(fn: Callable[[dict[str, Any]], Any]) -> Any:
+    if settings.demo_mode:
+        from app.demo_store import store as demo_store
+
+        return demo_store.mutate(fn)
     with SessionLocal.begin() as db:
         row = db.execute(text("SELECT state FROM app_state WHERE state_key = 'demo' FOR UPDATE")).scalar_one_or_none()
         state = row or _seed()
@@ -37,4 +46,9 @@ def mutate(fn: Callable[[dict[str, Any]], Any]) -> Any:
 
 
 def audit(event: str, actor: str, resource: str, result: str = "OK") -> None:
+    if settings.demo_mode:
+        from app.demo_store import store as demo_store
+
+        demo_store.audit(event, actor, resource, result)
+        return
     write_audit(event, actor, resource, result)
